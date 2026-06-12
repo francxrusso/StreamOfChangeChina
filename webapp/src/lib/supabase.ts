@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export function hasSupabaseConfig() {
   return Boolean(supabaseUrl && supabaseAnonKey);
@@ -20,6 +21,19 @@ function createSupabaseClient() {
 }
 
 export const supabase = createSupabaseClient();
+
+export function createSupabaseAdminClient() {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error("Configurazione admin Supabase mancante.");
+  }
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
 
 export type PublicSerie = {
   id: string;
