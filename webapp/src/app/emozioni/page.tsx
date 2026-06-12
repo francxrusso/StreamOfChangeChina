@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { hasSupabaseConfig, supabase, type PublicDanmu, type PublicEmozione, type PublicFraseParola } from "@/lib/supabase";
+import { type PublicDanmu, type PublicEmozione, type PublicFraseParola } from "@/lib/supabase";
+import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,12 @@ function countByEmotion<T extends { emozioni: string[] | null; emozione_principa
 }
 
 async function getEmozioni() {
-  if (!hasSupabaseConfig() || !supabase) {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
     return {
       emozioni: [],
-      error: "Configurazione Supabase mancante. Controlla webapp/.env.local e riavvia npm run dev."
+      error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
   }
 

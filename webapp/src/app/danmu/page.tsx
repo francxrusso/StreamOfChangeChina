@@ -1,4 +1,5 @@
-import { hasSupabaseConfig, supabase, type PublicDanmu, type PublicSerie } from "@/lib/supabase";
+import { type PublicDanmu, type PublicSerie } from "@/lib/supabase";
+import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,9 @@ function formatTime(seconds: number | null) {
 }
 
 async function getOptions() {
-  if (!hasSupabaseConfig() || !supabase) {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
     return emptyOptions;
   }
 
@@ -67,11 +70,13 @@ async function getOptions() {
 }
 
 async function getDanmu(filters: SearchParams) {
-  if (!hasSupabaseConfig() || !supabase) {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
     return {
       danmu: [],
       options: emptyOptions,
-      error: "Configurazione Supabase mancante. Controlla webapp/.env.local e riavvia npm run dev."
+      error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
   }
 

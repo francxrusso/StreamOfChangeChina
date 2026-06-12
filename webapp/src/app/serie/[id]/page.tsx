@@ -1,21 +1,22 @@
 import Link from "next/link";
 import {
-  hasSupabaseConfig,
-  supabase,
   type PublicEpisodio,
   type PublicPersonaggio,
   type PublicSerie
 } from "@/lib/supabase";
+import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 async function getSerieDetail(id: string) {
-  if (!hasSupabaseConfig() || !supabase) {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
     return {
       serie: null,
       episodi: [],
       personaggi: [],
-      error: "Configurazione Supabase mancante. Controlla webapp/.env.local e riavvia npm run dev."
+      error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
   }
 
