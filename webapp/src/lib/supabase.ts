@@ -54,6 +54,20 @@ export type PublicEpisodio = {
   descrizione: string | null;
 };
 
+export type PublicPersonaggio = {
+  id: string;
+  serie_id: string;
+  serie_titolo_originale: string;
+  nome_originale: string;
+  nome_pinyin: string | null;
+  nome_italiano: string | null;
+  genere: string | null;
+  fascia_eta: string | null;
+  lavoro: string | null;
+  immagine_rappresentativa: string | null;
+  descrizione: string | null;
+};
+
 export type PublicEmozione = {
   id: string;
   nome: string;

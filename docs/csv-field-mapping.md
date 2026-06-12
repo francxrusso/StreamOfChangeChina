@@ -81,6 +81,8 @@ CSV: `Personaggi-Vista Tabellare.csv`
 | Nome | `personaggi.nome_originale` |
 | Serie TV di Origine | `personaggi.serie_id` tramite match su `serie_tv.titolo_originale` |
 | Genere | `personaggi.genere` |
+| Fascia d'età | `personaggi.fascia_eta` |
+| Lavoro / Professione | `personaggi.lavoro` |
 | Immagine Rappresentativa | `personaggi.immagine_rappresentativa` |
 | Note Aggiuntive | `personaggi.note_admin` o `personaggi.descrizione`, secondo contenuto |
 

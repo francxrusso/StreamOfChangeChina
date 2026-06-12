@@ -67,6 +67,8 @@ create table personaggi (
   nome_pinyin text,
   nome_italiano text,
   genere text,
+  fascia_eta text,
+  lavoro text,
   immagine_rappresentativa text,
   descrizione text,
   note_admin text,
@@ -270,6 +272,8 @@ select
   personaggi.nome_pinyin,
   personaggi.nome_italiano,
   personaggi.genere,
+  personaggi.fascia_eta,
+  personaggi.lavoro,
   personaggi.immagine_rappresentativa,
   personaggi.descrizione
 from personaggi

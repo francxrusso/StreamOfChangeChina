@@ -68,7 +68,7 @@ Contiene gli episodi collegati a una serie.
 
 ### `personaggi`
 
-Contiene i personaggi collegati a una serie.
+Contiene i personaggi collegati a una serie, con dati anagrafici e narrativi essenziali come genere, fascia d'eta', lavoro/professione, descrizione e immagine rappresentativa.
 
 ### `frasi_parole`
 
