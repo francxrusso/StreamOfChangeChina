@@ -60,7 +60,7 @@ export async function createAdminRecord(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath(`/admin?tab=${resource.key}`);
+  revalidatePath("/admin");
 }
 
 export async function updateAdminRecord(formData: FormData) {
@@ -75,7 +75,7 @@ export async function updateAdminRecord(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath(`/admin?tab=${resource.key}`);
+  revalidatePath("/admin");
 }
 
 export async function deleteAdminRecord(formData: FormData) {
@@ -90,5 +90,5 @@ export async function deleteAdminRecord(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath(`/admin?tab=${resource.key}`);
+  revalidatePath("/admin");
 }

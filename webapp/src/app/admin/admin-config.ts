@@ -14,7 +14,7 @@ export type AdminField = {
   type: AdminFieldType;
   required?: boolean;
   options?: string[];
-  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "danmuAnalizzati" | "danmuRaw";
+  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmuAnalizzati" | "danmuRaw";
 };
 
 export type AdminResource = {
@@ -24,6 +24,7 @@ export type AdminResource = {
   primaryKey: string[];
   orderBy?: string;
   summaryFields: string[];
+  searchFields?: string[];
   fields: AdminField[];
 };
 
@@ -35,6 +36,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "titolo_originale",
     summaryFields: ["titolo_originale", "anno", "visibility"],
+    searchFields: ["titolo_originale", "titolo_pinyin", "titolo_italiano", "titolo_inglese", "genere", "piattaforma"],
     fields: [
       { name: "titolo_originale", label: "Titolo originale", type: "text", required: true },
       { name: "titolo_pinyin", label: "Titolo pinyin", type: "text" },
@@ -60,6 +62,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["serie_id", "stagione", "numero_episodio", "titolo_originale", "visibility"],
+    searchFields: ["titolo_originale", "titolo_italiano", "trascrizione", "sintesi_automatica", "descrizione"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "stagione", label: "Stagione", type: "number", required: true },
@@ -83,6 +86,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "nome_originale",
     summaryFields: ["nome_originale", "serie_id", "genere", "fascia_eta", "lavoro", "visibility"],
+    searchFields: ["nome_originale", "nome_pinyin", "nome_italiano", "genere", "fascia_eta", "lavoro", "descrizione"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "nome_originale", label: "Nome originale", type: "text", required: true },
@@ -104,6 +108,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "nome",
     summaryFields: ["nome", "colore_hex", "icona"],
+    searchFields: ["nome", "descrizione", "colore_assoc", "sintesi_frasi_collegate_ai"],
     fields: [
       { name: "nome", label: "Nome", type: "text", required: true },
       { name: "descrizione", label: "Descrizione", type: "textarea" },
@@ -121,6 +126,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["frase_originale", "serie_id", "tipo", "visibility"],
+    searchFields: ["frase_originale", "frase_pinyin", "traduzione_italiana", "parola_chiave", "sintesi_automatica", "nota_analisi"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "episodio_id", label: "Episodio", type: "uuid", relation: "episodi" },
@@ -148,6 +154,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["testo_originale", "serie_id", "timecode_secondi", "sentiment"],
+    searchFields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "piattaforma", "sentiment", "note"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "episodio_id", label: "Episodio", type: "uuid", relation: "episodi" },
@@ -173,6 +180,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["danmu_raw_id", "nota_analisi", "visibility"],
+    searchFields: ["nota_analisi", "note_admin"],
     fields: [
       { name: "danmu_raw_id", label: "Danmu raw", type: "uuid", relation: "danmuRaw", required: true },
       { name: "nota_analisi", label: "Nota analisi", type: "textarea" },
@@ -187,7 +195,7 @@ export const adminResources = [
     primaryKey: ["frase_id", "emozione_id"],
     summaryFields: ["frase_id", "emozione_id", "intensita"],
     fields: [
-      { name: "frase_id", label: "Frase/parola", type: "uuid", required: true },
+      { name: "frase_id", label: "Frase/parola", type: "uuid", relation: "frasi", required: true },
       { name: "emozione_id", label: "Emozione", type: "uuid", relation: "emozioni", required: true },
       { name: "intensita", label: "Intensita", type: "number" },
       { name: "note", label: "Note", type: "textarea" }
