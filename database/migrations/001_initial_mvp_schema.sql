@@ -277,6 +277,18 @@ join serie_tv on serie_tv.id = personaggi.serie_id
 where personaggi.visibility = 'public'
   and serie_tv.visibility = 'public';
 
+create view public_emozioni as
+select
+  id,
+  nome,
+  descrizione,
+  colore_assoc,
+  colore_hex,
+  icona,
+  sintesi_frasi_collegate_ai,
+  analisi_semantica_frasi_ai
+from emozioni;
+
 create view public_frasi_parole as
 select
   frasi_parole.id,

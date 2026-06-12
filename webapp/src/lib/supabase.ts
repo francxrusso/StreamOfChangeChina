@@ -53,3 +53,56 @@ export type PublicEpisodio = {
   analisi_tematica_emotiva: string | null;
   descrizione: string | null;
 };
+
+export type PublicEmozione = {
+  id: string;
+  nome: string;
+  descrizione: string | null;
+  colore_assoc: string | null;
+  colore_hex: string | null;
+  icona: string | null;
+  sintesi_frasi_collegate_ai: string | null;
+  analisi_semantica_frasi_ai: string | null;
+};
+
+export type PublicFraseParola = {
+  id: string;
+  serie_id: string;
+  serie_titolo_originale: string;
+  stagione: number | null;
+  numero_episodio: number | null;
+  personaggio_nome_originale: string | null;
+  emozione_principale: string | null;
+  timecode_inizio_secondi: number | null;
+  timecode_fine_secondi: number | null;
+  tipo: string | null;
+  frase_originale: string;
+  frase_pinyin: string | null;
+  traduzione_italiana: string | null;
+  parola_chiave: string | null;
+  immagine_rappresentativa: string | null;
+  sintesi_automatica: string | null;
+  classificazione_tematica_ai: string | null;
+  nota_analisi: string | null;
+  emozioni: string[];
+};
+
+export type PublicDanmu = {
+  id: string;
+  danmu_raw_id: string;
+  serie_id: string;
+  serie_titolo_originale: string;
+  stagione: number | null;
+  numero_episodio: number | null;
+  timecode_secondi: number | null;
+  testo_originale: string;
+  testo_pinyin: string | null;
+  traduzione_italiana: string | null;
+  piattaforma: string | null;
+  data_commento: string | null;
+  sentiment: string | null;
+  colore: string | null;
+  like_ricevuti: number | null;
+  nota_analisi: string | null;
+  emozioni: string[];
+};

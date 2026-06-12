@@ -1,12 +1,18 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
   return (
     <div className="grid gap-10">
       <section className="max-w-3xl">
-        <p className="mb-3 text-sm font-medium uppercase text-cinnabar">
-          Stream of Change in China
-        </p>
+        <Image
+          src="/brand/logo.png"
+          alt="Stream of Change China"
+          width={2388}
+          height={550}
+          priority
+          className="mb-6 h-auto w-full max-w-xl"
+        />
         <h1 className="text-4xl font-semibold text-ink">
           Archivio digitale per serie, trascrizioni, emozioni e Danmu.
         </h1>
@@ -15,7 +21,7 @@ export default function HomePage() {
         </p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <Link href="/serie" className="rounded-md border border-stone-200 bg-white p-5 hover:border-cinnabar">
           <h2 className="font-semibold text-ink">Serie TV</h2>
           <p className="mt-2 text-sm leading-6 text-stone-600">Catalogo delle opere e degli episodi.</p>
@@ -23,6 +29,10 @@ export default function HomePage() {
         <Link href="/frasi" className="rounded-md border border-stone-200 bg-white p-5 hover:border-cinnabar">
           <h2 className="font-semibold text-ink">Frasi</h2>
           <p className="mt-2 text-sm leading-6 text-stone-600">Lessico, battute e traduzioni annotate.</p>
+        </Link>
+        <Link href="/emozioni" className="rounded-md border border-stone-200 bg-white p-5 hover:border-cinnabar">
+          <h2 className="font-semibold text-ink">Emozioni</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">Vocabolario emotivo e collegamenti al corpus.</p>
         </Link>
         <Link href="/danmu" className="rounded-md border border-stone-200 bg-white p-5 hover:border-cinnabar">
           <h2 className="font-semibold text-ink">Danmu</h2>
