@@ -11,6 +11,7 @@ type EpisodeRecord = {
   numero_episodio: number | null;
   titolo_originale: string | null;
   messa_in_onda: string | null;
+  link_episodio: string | null;
   trascrizione: string | null;
   sintesi_automatica: string | null;
   analisi_tematica_emotiva: string | null;
@@ -51,7 +52,7 @@ async function getEpisode(id: string) {
     const { data, error } = await supabase
       .from("episodi")
       .select(
-        "id, serie_id, stagione, numero_episodio, titolo_originale, messa_in_onda, trascrizione, sintesi_automatica, analisi_tematica_emotiva, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
+        "id, serie_id, stagione, numero_episodio, titolo_originale, messa_in_onda, link_episodio, trascrizione, sintesi_automatica, analisi_tematica_emotiva, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
       )
       .eq("id", id)
       .eq("visibility", "public")
@@ -149,6 +150,16 @@ export default async function EpisodePage({
           <span>Episodio {episodio.numero_episodio ?? "-"}</span>
           {episodio.messa_in_onda ? <span>{episodio.messa_in_onda}</span> : null}
         </div>
+        {episodio.link_episodio ? (
+          <a
+            href={episodio.link_episodio}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Apri link episodio
+          </a>
+        ) : null}
       </div>
 
       <nav className="grid gap-3 md:grid-cols-2">

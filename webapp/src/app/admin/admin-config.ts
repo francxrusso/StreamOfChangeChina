@@ -71,6 +71,7 @@ export const adminResources = [
       { name: "titolo_italiano", label: "Titolo italiano", type: "text" },
       { name: "messa_in_onda", label: "Messa in onda", type: "date" },
       { name: "durata_secondi", label: "Durata secondi", type: "number" },
+      { name: "link_episodio", label: "Link episodio", type: "text" },
       { name: "trascrizione", label: "Trascrizione", type: "textarea" },
       { name: "sintesi_automatica", label: "Sintesi automatica", type: "textarea" },
       { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva", type: "textarea" },

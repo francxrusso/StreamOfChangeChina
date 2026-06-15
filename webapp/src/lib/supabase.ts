@@ -62,6 +62,7 @@ export type PublicEpisodio = {
   titolo_italiano: string | null;
   messa_in_onda: string | null;
   durata_secondi: number | null;
+  link_episodio: string | null;
   trascrizione: string | null;
   sintesi_automatica: string | null;
   analisi_tematica_emotiva: string | null;
