@@ -19,7 +19,8 @@ const navItems = [
   { href: "/serie", label: "Serie TV" },
   { href: "/frasi", label: "Frasi" },
   { href: "/emozioni", label: "Emozioni" },
-  { href: "/danmu", label: "Danmu" }
+  { href: "/danmu", label: "Danmu" },
+  { href: "/analisi", label: "Analisi" }
 ];
 
 export default function RootLayout({

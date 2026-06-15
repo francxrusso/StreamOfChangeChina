@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
+  Brain,
   Captions,
   Clapperboard,
   Database,
@@ -20,6 +21,7 @@ type HomeStats = {
   emozioni: number;
   frasi: number;
   danmu: number;
+  analisi: number;
 };
 
 type RecentSerie = {
@@ -36,7 +38,8 @@ const emptyStats: HomeStats = {
   personaggi: 0,
   emozioni: 0,
   frasi: 0,
-  danmu: 0
+  danmu: 0,
+  analisi: 0
 };
 
 async function getHomeData() {
@@ -57,6 +60,7 @@ async function getHomeData() {
     emozioni,
     frasi,
     danmu,
+    analisi,
     recentSerie
   ] = await Promise.all([
     supabase.from("serie_tv").select("*", { count: "exact", head: true }),
@@ -65,6 +69,7 @@ async function getHomeData() {
     supabase.from("emozioni").select("*", { count: "exact", head: true }),
     supabase.from("frasi_parole").select("*", { count: "exact", head: true }),
     supabase.from("danmu_raw").select("*", { count: "exact", head: true }),
+    supabase.from("analisi_episodi").select("*", { count: "exact", head: true }),
     supabase
       .from("serie_tv")
       .select("id,titolo_originale,titolo_inglese,anno,genere")
@@ -79,6 +84,7 @@ async function getHomeData() {
     emozioni.error ??
     frasi.error ??
     danmu.error ??
+    analisi.error ??
     recentSerie.error;
 
   if (firstError) {
@@ -96,7 +102,8 @@ async function getHomeData() {
       personaggi: personaggi.count ?? 0,
       emozioni: emozioni.count ?? 0,
       frasi: frasi.count ?? 0,
-      danmu: danmu.count ?? 0
+      danmu: danmu.count ?? 0,
+      analisi: analisi.count ?? 0
     },
     recentSerie: (recentSerie.data ?? []) as RecentSerie[],
     error: null
@@ -116,13 +123,15 @@ export default async function HomePage() {
     { label: "Personaggi", value: stats.personaggi, icon: Users, href: "/admin?tab=personaggi", tone: "text-jade" },
     { label: "Emozioni", value: stats.emozioni, icon: HeartPulse, href: "/emozioni", tone: "text-rose-700" },
     { label: "Frasi", value: stats.frasi, icon: Captions, href: "/frasi", tone: "text-amber-700" },
-    { label: "Danmu", value: stats.danmu, icon: MessageSquareText, href: "/danmu", tone: "text-sky-700" }
+    { label: "Danmu", value: stats.danmu, icon: MessageSquareText, href: "/danmu", tone: "text-sky-700" },
+    { label: "Analisi", value: stats.analisi, icon: Brain, href: "/analisi", tone: "text-violet-700" }
   ];
 
   const quickLinks = [
     { href: "/admin?tab=serie", label: "Nuova serie", detail: "Aggiungi metadati e visibilita", icon: Clapperboard },
     { href: "/admin?tab=episodi", label: "Nuovo episodio", detail: "Trascrizione, sintesi e note", icon: BookOpen },
     { href: "/admin?tab=frasi", label: "Nuova frase", detail: "Annota lessico, traduzione, emozioni", icon: Captions },
+    { href: "/analisi", label: "Analizza trascrizione", detail: "Frequenze, ricorrenze e parole chiave", icon: Brain },
     { href: "/admin?tab=personaggi", label: "Nuovo personaggio", detail: "Ruolo, genere, fascia d'eta, lavoro", icon: Users },
     { href: "/admin/utenti", label: "Gestisci utenti", detail: "Accessi, password e permessi", icon: ShieldCheck }
   ];
