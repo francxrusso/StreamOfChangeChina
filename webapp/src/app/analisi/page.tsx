@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BarChart3, Brain, Save } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { analyzeTranscript, type WordStat } from "@/lib/word-analysis";
+import { analyzeTranscript, type PhraseStat, type WordStat } from "@/lib/word-analysis";
 import { saveEpisodeAnalysis } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,7 @@ type SearchParams = Promise<{
   genere?: string;
   episodio?: string;
   parola?: string;
+  frase?: string;
 }>;
 
 type SerieOption = {
@@ -36,11 +37,14 @@ type EpisodeOption = {
 type SavedAnalysis = {
   id: string;
   parola_target: string | null;
+  frase_target: string | null;
   totale_token: number;
   token_unici: number;
   occorrenze_target: number | null;
+  occorrenze_frase_target: number | null;
   created_at: string;
   top_parole: WordStat[];
+  top_combinazioni: PhraseStat[];
   episodi: {
     titolo_originale: string | null;
     stagione: number | null;
@@ -63,7 +67,7 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-async function getAnalysisData(filters: { serie: string; genere: string; episodio: string; parola: string }) {
+async function getAnalysisData(filters: { serie: string; genere: string; episodio: string; parola: string; frase: string }) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
@@ -86,7 +90,7 @@ async function getAnalysisData(filters: { serie: string; genere: string; episodi
         .order("numero_episodio", { ascending: true }),
       supabase
         .from("analisi_episodi")
-        .select("id,parola_target,totale_token,token_unici,occorrenze_target,created_at,top_parole,episodi(titolo_originale,stagione,numero_episodio,serie_tv(titolo_originale,genere))")
+        .select("id,parola_target,frase_target,totale_token,token_unici,occorrenze_target,occorrenze_frase_target,created_at,top_parole,top_combinazioni,episodi(titolo_originale,stagione,numero_episodio,serie_tv(titolo_originale,genere))")
         .order("created_at", { ascending: false })
         .limit(12)
     ]);
@@ -130,7 +134,8 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
     serie: getValue(params.serie),
     genere: getValue(params.genere),
     episodio: getValue(params.episodio),
-    parola: getValue(params.parola)
+    parola: getValue(params.parola),
+    frase: getValue(params.frase)
   };
   const { series, episodes, selectedEpisode, savedAnalyses, error } = await getAnalysisData(filters);
   const genres = [...new Set(series.map((serie) => serie.genere).filter(Boolean) as string[])].sort((a, b) =>
@@ -138,7 +143,7 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
   );
   const preview =
     selectedEpisode?.trascrizione && filters.episodio
-      ? analyzeTranscript(selectedEpisode.trascrizione, filters.parola)
+      ? analyzeTranscript(selectedEpisode.trascrizione, filters.parola, filters.frase)
       : null;
 
   return (
@@ -147,11 +152,11 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
         <div>
           <h1 className="text-3xl font-semibold text-ink">Analisi</h1>
           <p className="mt-3 max-w-3xl text-stone-700">
-            Agente di analisi lessicale per estrarre frequenze, ricorrenze e parole dominanti dalle trascrizioni.
+            Agente specifico per il cinese mandarino: segmenta il testo, ignora parole vuote e individua combinazioni ricorrenti.
           </p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-700">
-          <span className="font-semibold text-ink">Modalita attiva:</span> frequenza parole
+          <span className="font-semibold text-ink">Modalita attiva:</span> mandarino lessicale
         </div>
       </div>
 
@@ -159,7 +164,7 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
       ) : null}
 
-      <form action="/analisi" className="grid gap-4 rounded-lg border border-stone-200 bg-white p-5 lg:grid-cols-4">
+      <form action="/analisi" className="grid gap-4 rounded-lg border border-stone-200 bg-white p-5 lg:grid-cols-5">
         <label className="grid gap-1 text-sm">
           <span className="font-medium text-ink">Serie</span>
           <select name="serie" defaultValue={filters.serie} className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar">
@@ -198,11 +203,20 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
           <input
             name="parola"
             defaultValue={filters.parola}
-            placeholder="es. 爱, paura, 秦明"
+            placeholder="es. 爱, 秦明"
             className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar"
           />
         </label>
-        <div className="flex gap-2 lg:col-span-4">
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Combinazione o frase</span>
+          <input
+            name="frase"
+            defaultValue={filters.frase}
+            placeholder="es. 我 爱 你, 犯罪 现场"
+            className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar"
+          />
+        </label>
+        <div className="flex gap-2 lg:col-span-5">
           <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
             Analizza
           </button>
@@ -241,11 +255,20 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
                   </dd>
                 </div>
               ) : null}
+              {preview.fraseTarget ? (
+                <div>
+                  <dt className="font-medium text-ink">Occorrenze frase</dt>
+                  <dd className="mt-1">
+                    “{preview.fraseTarget}”: {preview.occorrenzeFraseTarget}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
             {session?.canEdit ? (
               <form action={saveEpisodeAnalysis} className="mt-5">
                 <input type="hidden" name="episodio_id" value={filters.episodio} />
                 <input type="hidden" name="parola_target" value={filters.parola} />
+                <input type="hidden" name="frase_target" value={filters.frase} />
                 <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
                   <Save size={16} aria-hidden="true" />
                   Salva analisi
@@ -273,6 +296,31 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
                     <td className="px-4 py-3 font-medium text-ink">{word.parola}</td>
                     <td className="px-4 py-3 text-stone-700">{word.conteggio}</td>
                     <td className="px-4 py-3 text-stone-700">{word.percentuale}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-stone-200 bg-white lg:col-span-2">
+            <div className="flex items-center gap-3 border-b border-stone-200 p-4">
+              <BarChart3 size={20} className="text-cinnabar" aria-hidden="true" />
+              <h2 className="font-semibold text-ink">Combinazioni ricorrenti</h2>
+            </div>
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-stone-50 text-stone-700">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Sequenza</th>
+                  <th className="px-4 py-3 font-medium">Tipo</th>
+                  <th className="px-4 py-3 font-medium">Conteggio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.topCombinazioni.slice(0, 25).map((phrase) => (
+                  <tr key={`${phrase.frase}-${phrase.tipo}`} className="border-t border-stone-200">
+                    <td className="px-4 py-3 font-medium text-ink">{phrase.frase}</td>
+                    <td className="px-4 py-3 text-stone-700">{phrase.tipo}</td>
+                    <td className="px-4 py-3 text-stone-700">{phrase.conteggio}</td>
                   </tr>
                 ))}
               </tbody>
@@ -308,7 +356,21 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
                       {analysis.parola_target}: {analysis.occorrenze_target ?? 0}
                     </span>
                   ) : null}
+                  {analysis.frase_target ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">
+                      {analysis.frase_target}: {analysis.occorrenze_frase_target ?? 0}
+                    </span>
+                  ) : null}
                 </div>
+                {analysis.top_combinazioni?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
+                    {analysis.top_combinazioni.slice(0, 5).map((phrase) => (
+                      <span key={`${analysis.id}-${phrase.frase}`} className="rounded-sm border border-stone-200 px-2 py-1">
+                        {phrase.frase} ({phrase.conteggio})
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </article>
             ))
           )}

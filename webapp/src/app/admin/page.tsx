@@ -10,6 +10,8 @@ type SearchParams = Promise<{
   q?: string;
   serie?: string;
   visibility?: string;
+  status?: string;
+  message?: string;
 }>;
 
 type Row = Record<string, string | number | null>;
@@ -26,6 +28,11 @@ type AdminFilters = {
   q: string;
   serie: string;
   visibility: string;
+};
+
+type AdminNotice = {
+  status: "success" | "error";
+  message: string;
 };
 
 function asDisplayValue(value: unknown) {
@@ -311,6 +318,28 @@ function ResourceTabs({ activeKey }: { activeKey: string }) {
   );
 }
 
+function AdminNoticeBanner({ notice }: { notice: AdminNotice | null }) {
+  if (!notice) {
+    return null;
+  }
+
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-lg border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
+}
+
 async function getRelationOptions(): Promise<RelationOptions> {
   const supabase = createSupabaseAdminClient();
   const [serie, episodi, personaggi, emozioni, frasi, danmuAnalizzati, danmuRaw] = await Promise.all([
@@ -384,6 +413,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
     serie: getValue(params.serie).trim(),
     visibility: getValue(params.visibility).trim()
   };
+  const notice: AdminNotice | null =
+    params.status === "success" || params.status === "error"
+      ? {
+          status: params.status,
+          message: getValue(params.message) || "Nessun dettaglio disponibile."
+        }
+      : null;
   const relationOptions = await getRelationOptions();
   const relationLookup = buildRelationLookup(relationOptions);
   const rows = await getRows(activeResource, filters);
@@ -405,6 +441,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       </div>
 
       <ResourceTabs activeKey={activeResource.key} />
+
+      <AdminNoticeBanner notice={notice} />
 
       <AdminFiltersForm resource={activeResource} filters={filters} relationOptions={relationOptions} />
 

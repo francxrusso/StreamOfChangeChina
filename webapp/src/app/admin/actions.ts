@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireEditSession } from "../access-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { getAdminResource, type AdminField } from "./admin-config";
@@ -49,46 +50,101 @@ function buildPrimaryKeyFilter(formData: FormData, primaryKey: string[]) {
   }, {});
 }
 
+function adminRedirect(resourceKey: string, status: "success" | "error", message: string) {
+  redirect(`/admin?tab=${resourceKey}&status=${status}&message=${encodeURIComponent(message)}`);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Errore sconosciuto durante l'operazione.";
+}
+
 export async function createAdminRecord(formData: FormData) {
-  await requireEditSession();
-  const { resource, payload } = buildPayload(formData);
-  const supabase = createSupabaseAdminClient();
+  const resource = getAdminResource(String(formData.get("resource") ?? ""));
+  let status: "success" | "error" = "success";
+  let message = "Record creato correttamente.";
 
-  const { error } = await supabase.from(resource.table).insert(payload);
+  try {
+    await requireEditSession();
+    const { payload } = buildPayload(formData);
+    const supabase = createSupabaseAdminClient();
 
-  if (error) {
-    throw new Error(error.message);
+    const { error } = await supabase.from(resource.table).insert(payload);
+
+    if (error) {
+      status = "error";
+      message = `Creazione non riuscita: ${error.message}`;
+    } else {
+      revalidatePath("/admin");
+    }
+  } catch (error) {
+    status = "error";
+    message = getErrorMessage(error);
   }
 
-  revalidatePath("/admin");
+  adminRedirect(resource.key, status, message);
 }
 
 export async function updateAdminRecord(formData: FormData) {
-  await requireEditSession();
-  const { resource, payload } = buildPayload(formData);
-  const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
-  const supabase = createSupabaseAdminClient();
+  const resource = getAdminResource(String(formData.get("resource") ?? ""));
+  let status: "success" | "error" = "success";
+  let message = "Modifiche salvate correttamente.";
 
-  const { error } = await supabase.from(resource.table).update(payload).match(primaryKeyFilter);
+  try {
+    await requireEditSession();
+    const { payload } = buildPayload(formData);
+    const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
+    const supabase = createSupabaseAdminClient();
 
-  if (error) {
-    throw new Error(error.message);
+    const { error, count } = await supabase
+      .from(resource.table)
+      .update(payload, { count: "exact" })
+      .match(primaryKeyFilter);
+
+    if (error) {
+      status = "error";
+      message = `Salvataggio non riuscito: ${error.message}`;
+    } else if (count === 0) {
+      status = "error";
+      message = "Nessun record aggiornato. Il record potrebbe essere stato eliminato o non trovato.";
+    } else {
+      revalidatePath("/admin");
+    }
+  } catch (error) {
+    status = "error";
+    message = getErrorMessage(error);
   }
 
-  revalidatePath("/admin");
+  adminRedirect(resource.key, status, message);
 }
 
 export async function deleteAdminRecord(formData: FormData) {
-  await requireEditSession();
   const resource = getAdminResource(String(formData.get("resource") ?? ""));
-  const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
-  const supabase = createSupabaseAdminClient();
+  let status: "success" | "error" = "success";
+  let message = "Record eliminato correttamente.";
 
-  const { error } = await supabase.from(resource.table).delete().match(primaryKeyFilter);
+  try {
+    await requireEditSession();
+    const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
+    const supabase = createSupabaseAdminClient();
 
-  if (error) {
-    throw new Error(error.message);
+    const { error, count } = await supabase
+      .from(resource.table)
+      .delete({ count: "exact" })
+      .match(primaryKeyFilter);
+
+    if (error) {
+      status = "error";
+      message = `Eliminazione non riuscita: ${error.message}`;
+    } else if (count === 0) {
+      status = "error";
+      message = "Nessun record eliminato. Il record potrebbe essere gia stato rimosso.";
+    } else {
+      revalidatePath("/admin");
+    }
+  } catch (error) {
+    status = "error";
+    message = getErrorMessage(error);
   }
 
-  revalidatePath("/admin");
+  adminRedirect(resource.key, status, message);
 }

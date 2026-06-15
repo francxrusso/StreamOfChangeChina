@@ -16,6 +16,42 @@ type AdminUser = {
   last_login_at: string | null;
 };
 
+type SearchParams = Promise<{
+  status?: string;
+  message?: string;
+}>;
+
+type Notice = {
+  status: "success" | "error";
+  message: string;
+};
+
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function NoticeBanner({ notice }: { notice: Notice | null }) {
+  if (!notice) {
+    return null;
+  }
+
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-lg border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
+}
+
 function formatDate(value: string | null) {
   if (!value) {
     return "Mai";
@@ -43,7 +79,15 @@ async function getUsers() {
   return (data ?? []) as AdminUser[];
 }
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const notice: Notice | null =
+    params.status === "success" || params.status === "error"
+      ? {
+          status: params.status,
+          message: getValue(params.message) || "Nessun dettaglio disponibile."
+        }
+      : null;
   const users = await getUsers();
 
   return (
@@ -62,6 +106,8 @@ export default async function AdminUsersPage() {
           <span className="font-semibold text-ink">{users.length}</span> utenti configurati
         </div>
       </div>
+
+      <NoticeBanner notice={notice} />
 
       <section className="rounded-lg border border-stone-200 bg-white p-5">
         <div className="mb-5 flex items-center gap-3">
