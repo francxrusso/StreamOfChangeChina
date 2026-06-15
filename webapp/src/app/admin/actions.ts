@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminSession } from "../access-actions";
+import { requireEditSession } from "../access-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { getAdminResource, type AdminField } from "./admin-config";
 
@@ -50,7 +50,7 @@ function buildPrimaryKeyFilter(formData: FormData, primaryKey: string[]) {
 }
 
 export async function createAdminRecord(formData: FormData) {
-  await requireAdminSession();
+  await requireEditSession();
   const { resource, payload } = buildPayload(formData);
   const supabase = createSupabaseAdminClient();
 
@@ -64,7 +64,7 @@ export async function createAdminRecord(formData: FormData) {
 }
 
 export async function updateAdminRecord(formData: FormData) {
-  await requireAdminSession();
+  await requireEditSession();
   const { resource, payload } = buildPayload(formData);
   const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
   const supabase = createSupabaseAdminClient();
@@ -79,7 +79,7 @@ export async function updateAdminRecord(formData: FormData) {
 }
 
 export async function deleteAdminRecord(formData: FormData) {
-  await requireAdminSession();
+  await requireEditSession();
   const resource = getAdminResource(String(formData.get("resource") ?? ""));
   const primaryKeyFilter = buildPrimaryKeyFilter(formData, resource.primaryKey);
   const supabase = createSupabaseAdminClient();

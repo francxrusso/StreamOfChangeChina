@@ -8,6 +8,7 @@ import {
   HeartPulse,
   MessageSquareText,
   PencilLine,
+  ShieldCheck,
   Users
 } from "lucide-react";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
@@ -122,7 +123,8 @@ export default async function HomePage() {
     { href: "/admin?tab=serie", label: "Nuova serie", detail: "Aggiungi metadati e visibilita", icon: Clapperboard },
     { href: "/admin?tab=episodi", label: "Nuovo episodio", detail: "Trascrizione, sintesi e note", icon: BookOpen },
     { href: "/admin?tab=frasi", label: "Nuova frase", detail: "Annota lessico, traduzione, emozioni", icon: Captions },
-    { href: "/admin?tab=personaggi", label: "Nuovo personaggio", detail: "Ruolo, genere, fascia d'eta, lavoro", icon: Users }
+    { href: "/admin?tab=personaggi", label: "Nuovo personaggio", detail: "Ruolo, genere, fascia d'eta, lavoro", icon: Users },
+    { href: "/admin/utenti", label: "Gestisci utenti", detail: "Accessi, password e permessi", icon: ShieldCheck }
   ];
 
   return (

@@ -3,52 +3,89 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createHash } from "node:crypto";
+import { authCookieName, createSessionToken, verifySessionToken } from "@/lib/auth-session";
+import { verifyPassword } from "@/lib/passwords";
+import { createSupabaseAdminClient } from "@/lib/supabase";
 
-const adminCookieName = "scc_admin_session";
+type AdminUserRecord = {
+  id: string;
+  email: string;
+  display_name: string;
+  password_hash: string | null;
+  is_active: boolean;
+  can_edit: boolean;
+};
 
-function adminPasswordHash() {
-  const password = process.env.ADMIN_PASSWORD;
-
-  if (!password) {
-    return null;
-  }
-
-  return createHash("sha256").update(password).digest("hex");
+export async function getAdminSession() {
+  const cookieStore = await cookies();
+  return verifySessionToken(cookieStore.get(authCookieName)?.value);
 }
 
 export async function hasAdminSession() {
-  const expectedHash = adminPasswordHash();
-
-  if (!expectedHash) {
-    return false;
-  }
-
-  const cookieStore = await cookies();
-  return cookieStore.get(adminCookieName)?.value === expectedHash;
+  return Boolean(await getAdminSession());
 }
 
 export async function requireAdminSession() {
-  if (!(await hasAdminSession())) {
-    throw new Error("Sessione admin non valida.");
+  const session = await getAdminSession();
+
+  if (!session) {
+    throw new Error("Sessione non valida.");
   }
+
+  return session;
+}
+
+export async function requireEditSession() {
+  const session = await requireAdminSession();
+
+  if (!session.canEdit) {
+    throw new Error("Non hai i permessi per modificare i dati.");
+  }
+
+  return session;
 }
 
 export async function loginAdmin(formData: FormData) {
-  const expectedHash = adminPasswordHash();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!expectedHash || createHash("sha256").update(password).digest("hex") !== expectedHash) {
-    throw new Error("Password admin non valida.");
+  if (!email || !password) {
+    throw new Error("Email e password sono obbligatorie.");
   }
 
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id,email,display_name,password_hash,is_active,can_edit")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const user = data as AdminUserRecord | null;
+
+  if (!user || !user.is_active || !verifyPassword(password, user.password_hash)) {
+    throw new Error("Credenziali non valide.");
+  }
+
+  const token = await createSessionToken({
+    userId: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    canEdit: user.can_edit
+  });
+
   const cookieStore = await cookies();
-  cookieStore.set(adminCookieName, expectedHash, {
+  cookieStore.set(authCookieName, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/"
   });
+
+  await supabase.from("admin_users").update({ last_login_at: new Date().toISOString() }).eq("id", user.id);
 
   revalidatePath("/", "layout");
   redirect("/");
@@ -56,7 +93,7 @@ export async function loginAdmin(formData: FormData) {
 
 export async function logoutAdmin() {
   const cookieStore = await cookies();
-  cookieStore.set(adminCookieName, "", {
+  cookieStore.set(authCookieName, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
