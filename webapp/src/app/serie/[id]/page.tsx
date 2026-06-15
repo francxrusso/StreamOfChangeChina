@@ -8,6 +8,24 @@ import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supab
 
 export const dynamic = "force-dynamic";
 
+function SeriePoster({ serie }: { serie: PublicSerie }) {
+  if (!serie.poster_url) {
+    return (
+      <div className="flex aspect-[2/3] w-full items-center justify-center rounded-md bg-stone-100 text-sm text-stone-500">
+        Poster non disponibile
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={serie.poster_url}
+      alt={`Poster ${serie.titolo_originale}`}
+      className="aspect-[2/3] w-full rounded-md object-cover"
+    />
+  );
+}
+
 async function getSerieDetail(id: string) {
   const supabase = createServerSupabaseClient();
 
@@ -108,13 +126,42 @@ export default async function SerieDetailPage({
 
   return (
     <section className="grid gap-8">
-      <div>
-        <Link href="/serie" className="text-sm font-medium text-cinnabar hover:text-ink">
-          Torna alle serie
-        </Link>
-        <h1 className="mt-4 text-3xl font-semibold text-ink">{serie.titolo_originale}</h1>
-        {serie.titolo_inglese ? <p className="mt-2 text-stone-600">{serie.titolo_inglese}</p> : null}
-        {serie.descrizione ? <p className="mt-5 max-w-3xl leading-7 text-stone-700">{serie.descrizione}</p> : null}
+      <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:items-start">
+        <SeriePoster serie={serie} />
+        <div>
+          <Link href="/serie" className="text-sm font-medium text-cinnabar hover:text-ink">
+            Torna alle serie
+          </Link>
+          <h1 className="mt-4 text-3xl font-semibold text-ink">{serie.titolo_originale}</h1>
+          {serie.titolo_inglese ? <p className="mt-2 text-stone-600">{serie.titolo_inglese}</p> : null}
+          {serie.descrizione ? <p className="mt-5 max-w-3xl leading-7 text-stone-700">{serie.descrizione}</p> : null}
+          <dl className="mt-6 grid gap-4 text-sm text-stone-700 sm:grid-cols-2 lg:grid-cols-4">
+            {serie.anno ? (
+              <div>
+                <dt className="font-medium text-ink">Anno</dt>
+                <dd className="mt-1">{serie.anno}</dd>
+              </div>
+            ) : null}
+            {serie.genere ? (
+              <div>
+                <dt className="font-medium text-ink">Genere</dt>
+                <dd className="mt-1">{serie.genere}</dd>
+              </div>
+            ) : null}
+            {serie.piattaforma ? (
+              <div>
+                <dt className="font-medium text-ink">Piattaforma</dt>
+                <dd className="mt-1">{serie.piattaforma}</dd>
+              </div>
+            ) : null}
+            {serie.tipo_distribuzione ? (
+              <div>
+                <dt className="font-medium text-ink">Distribuzione</dt>
+                <dd className="mt-1">{serie.tipo_distribuzione}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
       </div>
 
       <div>
@@ -151,7 +198,7 @@ export default async function SerieDetailPage({
           </div>
         ) : (
           <div className="mt-4 rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-            Non ci sono ancora personaggi pubblici per questa serie.
+            Non ci sono ancora personaggi per questa serie.
           </div>
         )}
       </div>

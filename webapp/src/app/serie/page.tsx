@@ -8,6 +8,25 @@ type SerieWithCount = PublicSerie & {
   episodi_count: number;
 };
 
+function SeriePoster({ serie }: { serie: PublicSerie }) {
+  if (!serie.poster_url) {
+    return (
+      <div className="flex aspect-[2/3] w-full items-center justify-center rounded-md bg-stone-100 text-sm text-stone-500">
+        Poster non disponibile
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={serie.poster_url}
+      alt={`Poster ${serie.titolo_originale}`}
+      className="aspect-[2/3] w-full rounded-md object-cover"
+      loading="lazy"
+    />
+  );
+}
+
 async function getSerie() {
   const supabase = createServerSupabaseClient();
 
@@ -64,7 +83,7 @@ export default async function SeriePage() {
     <section className="grid gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-ink">Serie TV</h1>
-        <p className="mt-3 text-stone-700">Catalogo pubblico delle serie incluse nel corpus.</p>
+        <p className="mt-3 text-stone-700">Catalogo riservato delle serie incluse nel corpus.</p>
       </div>
 
       {error ? (
@@ -75,73 +94,71 @@ export default async function SeriePage() {
 
       {!error && serie.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-          Non ci sono ancora serie pubbliche. Controlla che in Supabase esistano record con
-          visibility = public.
+          Non ci sono ancora serie disponibili.
         </div>
       ) : null}
 
       {serie.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {(serie as SerieWithCount[]).map((item) => (
-            <article key={item.id} className="rounded-md border border-stone-200 bg-white p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-ink">
-                    <Link href={`/serie/${item.id}`} className="hover:text-cinnabar">
-                      {item.titolo_originale}
-                    </Link>
-                  </h2>
-                  {item.titolo_inglese ? (
-                    <p className="mt-1 text-sm text-stone-600">{item.titolo_inglese}</p>
+            <article key={item.id} className="overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
+              <Link href={`/serie/${item.id}`} className="block">
+                <SeriePoster serie={item} />
+              </Link>
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-ink">
+                      <Link href={`/serie/${item.id}`} className="hover:text-cinnabar">
+                        {item.titolo_originale}
+                      </Link>
+                    </h2>
+                    {item.titolo_inglese ? (
+                      <p className="mt-1 text-sm text-stone-600">{item.titolo_inglese}</p>
+                    ) : null}
+                  </div>
+                  {item.anno ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                      {item.anno}
+                    </span>
                   ) : null}
                 </div>
-                {item.anno ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
-                    {item.anno}
-                  </span>
+
+                {item.descrizione ? (
+                  <p className="mt-4 line-clamp-4 text-sm leading-6 text-stone-700">{item.descrizione}</p>
                 ) : null}
+
+                <dl className="mt-5 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
+                  {item.genere ? (
+                    <div>
+                      <dt className="font-medium text-ink">Genere</dt>
+                      <dd className="mt-1">{item.genere}</dd>
+                    </div>
+                  ) : null}
+                  {item.stagioni ? (
+                    <div>
+                      <dt className="font-medium text-ink">Stagioni</dt>
+                      <dd className="mt-1">{item.stagioni}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt className="font-medium text-ink">Episodi</dt>
+                    <dd className="mt-1">{item.episodi_count}</dd>
+                  </div>
+                  {item.piattaforma ? (
+                    <div>
+                      <dt className="font-medium text-ink">Piattaforma</dt>
+                      <dd className="mt-1">{item.piattaforma}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+                <Link
+                  href={`/serie/${item.id}`}
+                  className="mt-5 inline-flex text-sm font-medium text-cinnabar hover:text-ink"
+                >
+                  Apri episodi
+                </Link>
               </div>
-
-              {item.descrizione ? (
-                <p className="mt-4 text-sm leading-6 text-stone-700">{item.descrizione}</p>
-              ) : null}
-
-              <dl className="mt-5 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
-                {item.genere ? (
-                  <div>
-                    <dt className="font-medium text-ink">Genere</dt>
-                    <dd className="mt-1">{item.genere}</dd>
-                  </div>
-                ) : null}
-                {item.stagioni ? (
-                  <div>
-                    <dt className="font-medium text-ink">Stagioni</dt>
-                    <dd className="mt-1">{item.stagioni}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt className="font-medium text-ink">Episodi</dt>
-                  <dd className="mt-1">{item.episodi_count}</dd>
-                </div>
-                {item.piattaforma ? (
-                  <div>
-                    <dt className="font-medium text-ink">Piattaforma</dt>
-                    <dd className="mt-1">{item.piattaforma}</dd>
-                  </div>
-                ) : null}
-                {item.tipo_distribuzione ? (
-                  <div>
-                    <dt className="font-medium text-ink">Distribuzione</dt>
-                    <dd className="mt-1">{item.tipo_distribuzione}</dd>
-                  </div>
-                ) : null}
-              </dl>
-              <Link
-                href={`/serie/${item.id}`}
-                className="mt-5 inline-flex text-sm font-medium text-cinnabar hover:text-ink"
-              >
-                Apri episodi
-              </Link>
             </article>
           ))}
         </div>
