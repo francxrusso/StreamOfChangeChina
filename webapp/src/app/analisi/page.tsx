@@ -1,63 +1,73 @@
 import Link from "next/link";
-import { BarChart3, Brain, Save } from "lucide-react";
+import { BarChart3, FileText, Layers3 } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { analyzeTranscript, type PhraseStat, type WordStat } from "@/lib/word-analysis";
-import { saveEpisodeAnalysis } from "./actions";
+import {
+  CreateAnalysisModal,
+  type AnalysisEpisodeOption,
+  type AnalysisSerieOption
+} from "./create-analysis-modal";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
-  serie?: string;
-  genere?: string;
-  episodio?: string;
-  parola?: string;
-  frase?: string;
+  status?: string;
+  message?: string;
 }>;
 
-type SerieOption = {
-  id: string;
-  titolo_originale: string;
-  genere: string | null;
+type AnalysisNotice = {
+  status: "success" | "error";
+  message: string;
 };
 
-type EpisodeOption = {
+type AnalysisRun = {
   id: string;
-  serie_id: string;
-  stagione: number | null;
-  numero_episodio: number | null;
-  titolo_originale: string | null;
-  trascrizione: string | null;
+  titolo: string;
+  scope_tipo: "serie" | "stagioni" | "episodi";
+  stagioni: number[];
+  episodio_ids: string[];
+  output_grafici: boolean;
+  totale_episodi: number;
+  totale_token: number;
+  token_unici: number;
+  created_at: string;
   serie_tv: {
     titolo_originale: string;
     genere: string | null;
   } | null;
 };
 
-type SavedAnalysis = {
-  id: string;
-  parola_target: string | null;
-  frase_target: string | null;
-  totale_token: number;
-  token_unici: number;
-  occorrenze_target: number | null;
-  occorrenze_frase_target: number | null;
-  created_at: string;
-  top_parole: WordStat[];
-  top_combinazioni: PhraseStat[];
-  episodi: {
-    titolo_originale: string | null;
-    stagione: number | null;
-    numero_episodio: number | null;
-    serie_tv: {
-      titolo_originale: string;
-      genere: string | null;
-    } | null;
-  } | null;
-};
-
 function getValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: { status?: string; message?: string }): AnalysisNotice | null {
+  const status = params.status;
+  const message = params.message;
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: AnalysisNotice }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
 }
 
 function formatDate(value: string) {
@@ -67,84 +77,72 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-async function getAnalysisData(filters: { serie: string; genere: string; episodio: string; parola: string; frase: string }) {
+function scopeLabel(analysis: AnalysisRun) {
+  if (analysis.scope_tipo === "stagioni") {
+    return `Stagioni ${analysis.stagioni.join(", ") || "-"}`;
+  }
+
+  if (analysis.scope_tipo === "episodi") {
+    return `${analysis.episodio_ids.length} episodi selezionati`;
+  }
+
+  return "Serie completa";
+}
+
+async function getAnalysisPageData() {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
     return {
-      series: [] as SerieOption[],
-      episodes: [] as EpisodeOption[],
-      selectedEpisode: null as EpisodeOption | null,
-      savedAnalyses: [] as SavedAnalysis[],
+      series: [] as AnalysisSerieOption[],
+      episodes: [] as AnalysisEpisodeOption[],
+      analyses: [] as AnalysisRun[],
       error: "Configurazione Supabase server mancante."
     };
   }
 
-  const [{ data: series, error: seriesError }, { data: episodes, error: episodesError }, { data: saved, error: savedError }] =
+  const [{ data: series, error: seriesError }, { data: episodes, error: episodesError }, { data: analyses, error: analysesError }] =
     await Promise.all([
-      supabase.from("serie_tv").select("id,titolo_originale,genere").order("titolo_originale"),
+      supabase.from("serie_tv").select("id,titolo_originale").order("titolo_originale", { ascending: true }),
       supabase
         .from("episodi")
-        .select("id,serie_id,stagione,numero_episodio,titolo_originale,trascrizione,serie_tv(titolo_originale,genere)")
+        .select("id,serie_id,stagione,numero_episodio,titolo_originale")
         .order("stagione", { ascending: true })
         .order("numero_episodio", { ascending: true }),
       supabase
-        .from("analisi_episodi")
-        .select("id,parola_target,frase_target,totale_token,token_unici,occorrenze_target,occorrenze_frase_target,created_at,top_parole,top_combinazioni,episodi(titolo_originale,stagione,numero_episodio,serie_tv(titolo_originale,genere))")
+        .from("analisi_create")
+        .select("id,titolo,scope_tipo,stagioni,episodio_ids,output_grafici,totale_episodi,totale_token,token_unici,created_at,serie_tv(titolo_originale,genere)")
         .order("created_at", { ascending: false })
-        .limit(12)
+        .limit(50)
     ]);
 
-  const firstError = seriesError ?? episodesError ?? savedError;
+  const firstError = seriesError ?? episodesError ?? analysesError;
 
   if (firstError) {
     return {
-      series: [] as SerieOption[],
-      episodes: [] as EpisodeOption[],
-      selectedEpisode: null as EpisodeOption | null,
-      savedAnalyses: [] as SavedAnalysis[],
+      series: [] as AnalysisSerieOption[],
+      episodes: [] as AnalysisEpisodeOption[],
+      analyses: [] as AnalysisRun[],
       error: firstError.message
     };
   }
 
-  const allEpisodes = (episodes ?? []) as unknown as EpisodeOption[];
-  const filteredEpisodes = allEpisodes.filter((episode) => {
-    const matchesSerie = filters.serie ? episode.serie_id === filters.serie : true;
-    const matchesGenre = filters.genere ? episode.serie_tv?.genere === filters.genere : true;
-    return matchesSerie && matchesGenre;
-  });
-  const selectedEpisode =
-    filteredEpisodes.find((episode) => episode.id === filters.episodio) ??
-    allEpisodes.find((episode) => episode.id === filters.episodio) ??
-    null;
-
   return {
-    series: (series ?? []) as SerieOption[],
-    episodes: filteredEpisodes,
-    selectedEpisode,
-    savedAnalyses: (saved ?? []) as unknown as SavedAnalysis[],
+    series: (series ?? []) as AnalysisSerieOption[],
+    episodes: (episodes ?? []) as AnalysisEpisodeOption[],
+    analyses: (analyses ?? []) as unknown as AnalysisRun[],
     error: null
   };
 }
 
 export default async function AnalysisPage({ searchParams }: { searchParams: SearchParams }) {
-  const session = await getAdminSession();
   const params = await searchParams;
-  const filters = {
-    serie: getValue(params.serie),
-    genere: getValue(params.genere),
-    episodio: getValue(params.episodio),
-    parola: getValue(params.parola),
-    frase: getValue(params.frase)
-  };
-  const { series, episodes, selectedEpisode, savedAnalyses, error } = await getAnalysisData(filters);
-  const genres = [...new Set(series.map((serie) => serie.genere).filter(Boolean) as string[])].sort((a, b) =>
-    a.localeCompare(b, "it")
-  );
-  const preview =
-    selectedEpisode?.trascrizione && filters.episodio
-      ? analyzeTranscript(selectedEpisode.trascrizione, filters.parola, filters.frase)
-      : null;
+  const session = await getAdminSession();
+  const notice = getNotice({
+    status: getValue(params.status),
+    message: getValue(params.message)
+  });
+  const { series, episodes, analyses, error } = await getAnalysisPageData();
 
   return (
     <section className="space-y-8">
@@ -152,230 +150,56 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
         <div>
           <h1 className="text-3xl font-semibold text-ink">Analisi</h1>
           <p className="mt-3 max-w-3xl text-stone-700">
-            Agente specifico per il cinese mandarino: segmenta il testo, ignora parole vuote e individua combinazioni ricorrenti.
+            Crea analisi lessicali sul mandarino partendo da una serie intera, stagioni specifiche o singoli episodi.
           </p>
         </div>
-        <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-700">
-          <span className="font-semibold text-ink">Modalita attiva:</span> mandarino lessicale
-        </div>
+        {session?.canEdit ? <CreateAnalysisModal series={series} episodes={episodes} /> : null}
       </div>
 
+      {notice ? <Notice notice={notice} /> : null}
+
       {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Impossibile caricare le analisi: {error}
+        </div>
       ) : null}
 
-      <form action="/analisi" className="grid gap-4 rounded-lg border border-stone-200 bg-white p-5 lg:grid-cols-5">
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-ink">Serie</span>
-          <select name="serie" defaultValue={filters.serie} className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar">
-            <option value="">Tutte</option>
-            {series.map((serie) => (
-              <option key={serie.id} value={serie.id}>
-                {serie.titolo_originale}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-ink">Genere</span>
-          <select name="genere" defaultValue={filters.genere} className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar">
-            <option value="">Tutti</option>
-            {genres.map((genre) => (
-              <option key={genre} value={genre}>
-                {genre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-ink">Episodio</span>
-          <select name="episodio" defaultValue={filters.episodio} className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar">
-            <option value="">Seleziona</option>
-            {episodes.map((episode) => (
-              <option key={episode.id} value={episode.id}>
-                {episode.serie_tv?.titolo_originale} S{episode.stagione} E{episode.numero_episodio} - {episode.titolo_originale ?? "Senza titolo"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-ink">Parola da cercare</span>
-          <input
-            name="parola"
-            defaultValue={filters.parola}
-            placeholder="es. 爱, 秦明"
-            className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-ink">Combinazione o frase</span>
-          <input
-            name="frase"
-            defaultValue={filters.frase}
-            placeholder="es. 我 爱 你, 犯罪 现场"
-            className="rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-cinnabar"
-          />
-        </label>
-        <div className="flex gap-2 lg:col-span-5">
-          <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
-            Analizza
-          </button>
-          <Link href="/analisi" className="rounded-md border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:border-cinnabar hover:text-cinnabar">
-            Reset
-          </Link>
+      {!error && analyses.length === 0 ? (
+        <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-sm text-stone-700">
+          Nessuna analisi creata. Usa il pulsante “Crea nuova analisi” per iniziare.
         </div>
-      </form>
-
-      {preview ? (
-        <section className="grid gap-5 lg:grid-cols-[0.7fr_1.3fr]">
-          <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-stone-100 text-cinnabar">
-                <Brain size={20} aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="font-semibold text-ink">Anteprima agente</h2>
-                <p className="text-sm text-stone-600">Risultato non ancora salvato.</p>
-              </div>
-            </div>
-            <dl className="mt-5 grid gap-4 text-sm text-stone-700">
-              <div>
-                <dt className="font-medium text-ink">Token totali</dt>
-                <dd className="mt-1">{preview.totaleToken}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-ink">Token unici</dt>
-                <dd className="mt-1">{preview.tokenUnici}</dd>
-              </div>
-              {preview.parolaTarget ? (
-                <div>
-                  <dt className="font-medium text-ink">Occorrenze di “{preview.parolaTarget}”</dt>
-                  <dd className="mt-1">
-                    {preview.occorrenzeTarget} ({preview.densitaTarget}%)
-                  </dd>
-                </div>
-              ) : null}
-              {preview.fraseTarget ? (
-                <div>
-                  <dt className="font-medium text-ink">Occorrenze frase</dt>
-                  <dd className="mt-1">
-                    “{preview.fraseTarget}”: {preview.occorrenzeFraseTarget}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-            {session?.canEdit ? (
-              <form action={saveEpisodeAnalysis} className="mt-5">
-                <input type="hidden" name="episodio_id" value={filters.episodio} />
-                <input type="hidden" name="parola_target" value={filters.parola} />
-                <input type="hidden" name="frase_target" value={filters.frase} />
-                <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
-                  <Save size={16} aria-hidden="true" />
-                  Salva analisi
-                </button>
-              </form>
-            ) : null}
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-            <div className="flex items-center gap-3 border-b border-stone-200 p-4">
-              <BarChart3 size={20} className="text-cinnabar" aria-hidden="true" />
-              <h2 className="font-semibold text-ink">Top parole</h2>
-            </div>
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-stone-50 text-stone-700">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Parola</th>
-                  <th className="px-4 py-3 font-medium">Conteggio</th>
-                  <th className="px-4 py-3 font-medium">Peso</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.topParole.slice(0, 25).map((word) => (
-                  <tr key={word.parola} className="border-t border-stone-200">
-                    <td className="px-4 py-3 font-medium text-ink">{word.parola}</td>
-                    <td className="px-4 py-3 text-stone-700">{word.conteggio}</td>
-                    <td className="px-4 py-3 text-stone-700">{word.percentuale}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-stone-200 bg-white lg:col-span-2">
-            <div className="flex items-center gap-3 border-b border-stone-200 p-4">
-              <BarChart3 size={20} className="text-cinnabar" aria-hidden="true" />
-              <h2 className="font-semibold text-ink">Combinazioni ricorrenti</h2>
-            </div>
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-stone-50 text-stone-700">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Sequenza</th>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
-                  <th className="px-4 py-3 font-medium">Conteggio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.topCombinazioni.slice(0, 25).map((phrase) => (
-                  <tr key={`${phrase.frase}-${phrase.tipo}`} className="border-t border-stone-200">
-                    <td className="px-4 py-3 font-medium text-ink">{phrase.frase}</td>
-                    <td className="px-4 py-3 text-stone-700">{phrase.tipo}</td>
-                    <td className="px-4 py-3 text-stone-700">{phrase.conteggio}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
       ) : null}
 
-      <section>
-        <h2 className="text-xl font-semibold text-ink">Analisi salvate</h2>
-        <div className="mt-4 grid gap-3">
-          {savedAnalyses.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-stone-300 bg-white p-5 text-sm text-stone-600">
-              Nessuna analisi salvata.
-            </div>
-          ) : (
-            savedAnalyses.map((analysis) => (
-              <article key={analysis.id} className="rounded-lg border border-stone-200 bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-semibold text-ink">
-                      {analysis.episodi?.serie_tv?.titolo_originale} S{analysis.episodi?.stagione} E{analysis.episodi?.numero_episodio}
-                    </h3>
-                    <p className="mt-1 text-sm text-stone-600">{analysis.episodi?.titolo_originale ?? "Senza titolo"}</p>
-                  </div>
-                  <span className="text-xs text-stone-500">{formatDate(analysis.created_at)}</span>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_token} token</span>
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.token_unici} unici</span>
-                  {analysis.parola_target ? (
-                    <span className="rounded-sm bg-stone-100 px-2 py-1">
-                      {analysis.parola_target}: {analysis.occorrenze_target ?? 0}
-                    </span>
-                  ) : null}
-                  {analysis.frase_target ? (
-                    <span className="rounded-sm bg-stone-100 px-2 py-1">
-                      {analysis.frase_target}: {analysis.occorrenze_frase_target ?? 0}
-                    </span>
-                  ) : null}
-                </div>
-                {analysis.top_combinazioni?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
-                    {analysis.top_combinazioni.slice(0, 5).map((phrase) => (
-                      <span key={`${analysis.id}-${phrase.frase}`} className="rounded-sm border border-stone-200 px-2 py-1">
-                        {phrase.frase} ({phrase.conteggio})
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
-            ))
-          )}
+      {analyses.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {analyses.map((analysis) => (
+            <Link
+              key={analysis.id}
+              href={`/analisi/${analysis.id}`}
+              className="rounded-md border border-stone-200 bg-white p-5 transition hover:border-cinnabar hover:shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-stone-100 text-cinnabar">
+                  {analysis.output_grafici ? <BarChart3 size={20} aria-hidden="true" /> : <FileText size={20} aria-hidden="true" />}
+                </span>
+                <span className="text-right text-xs text-stone-500">{formatDate(analysis.created_at)}</span>
+              </div>
+              <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{analysis.titolo}</h2>
+              <p className="mt-2 text-sm text-stone-600">{analysis.serie_tv?.genere ?? "Genere non impostato"}</p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
+                <span className="rounded-sm bg-stone-100 px-2 py-1">{scopeLabel(analysis)}</span>
+                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_episodi} episodi</span>
+                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_token} token</span>
+                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.token_unici} unici</span>
+              </div>
+              <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cinnabar">
+                <Layers3 size={15} aria-hidden="true" />
+                Apri dettaglio
+              </div>
+            </Link>
+          ))}
         </div>
-      </section>
+      ) : null}
     </section>
   );
 }
