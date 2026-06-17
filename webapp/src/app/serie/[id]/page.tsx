@@ -26,6 +26,40 @@ function SeriePoster({ serie }: { serie: PublicSerie }) {
   );
 }
 
+function CharacterImage({ personaggio }: { personaggio: PublicPersonaggio }) {
+  if (!personaggio.immagine_rappresentativa) {
+    return (
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-stone-100 text-base font-semibold text-stone-500">
+        {personaggio.nome_originale.slice(0, 1)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={personaggio.immagine_rappresentativa}
+      alt={personaggio.nome_originale}
+      className="h-14 w-14 shrink-0 rounded-md object-cover"
+      loading="lazy"
+    />
+  );
+}
+
+function seasonLabel(stagione: number | null) {
+  return stagione ? `Stagione ${stagione}` : "Senza stagione";
+}
+
+function groupEpisodesBySeason(episodes: PublicEpisodio[]) {
+  const groups = new Map<number | null, PublicEpisodio[]>();
+
+  for (const episode of episodes) {
+    const key = episode.stagione ?? null;
+    groups.set(key, [...(groups.get(key) ?? []), episode]);
+  }
+
+  return [...groups.entries()].sort(([a], [b]) => (a ?? 0) - (b ?? 0));
+}
+
 async function getSerieDetail(id: string) {
   const supabase = createServerSupabaseClient();
 
@@ -97,6 +131,8 @@ export default async function SerieDetailPage({
 }) {
   const { id } = await params;
   const { serie, episodi, personaggi, error } = await getSerieDetail(id);
+  const episodeGroups = groupEpisodesBySeason(episodi);
+  const hasMultipleSeasons = episodeGroups.length > 1;
 
   if (error) {
     return (
@@ -164,74 +200,88 @@ export default async function SerieDetailPage({
         </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold text-ink">Personaggi</h2>
+      <details className="rounded-md border border-stone-200 bg-white" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">
+          <span>Personaggi</span>
+          <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{personaggi.length}</span>
+        </summary>
         {personaggi.length > 0 ? (
-          <div className="mt-4 overflow-hidden rounded-md border border-stone-200 bg-white">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-stone-50 text-stone-700">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Nome</th>
-                  <th className="px-4 py-3 font-medium">Genere</th>
-                  <th className="px-4 py-3 font-medium">Fascia d'età</th>
-                  <th className="px-4 py-3 font-medium">Lavoro</th>
-                  <th className="px-4 py-3 font-medium">Descrizione</th>
-                </tr>
-              </thead>
-              <tbody>
-                {personaggi.map((personaggio) => (
-                  <tr key={personaggio.id} className="border-t border-stone-200 align-top">
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-ink">{personaggio.nome_originale}</span>
-                      {personaggio.nome_pinyin ? (
-                        <span className="mt-1 block text-xs text-stone-500">{personaggio.nome_pinyin}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-stone-700">{personaggio.genere ?? "-"}</td>
-                    <td className="px-4 py-3 text-stone-700">{personaggio.fascia_eta ?? "-"}</td>
-                    <td className="px-4 py-3 text-stone-700">{personaggio.lavoro ?? "-"}</td>
-                    <td className="px-4 py-3 text-stone-700">{personaggio.descrizione ?? "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-3 border-t border-stone-200 p-4 md:grid-cols-2">
+            {personaggi.map((personaggio) => (
+              <article key={personaggio.id} className="grid gap-3 rounded-md border border-stone-200 p-3">
+                <div className="flex gap-3">
+                  <CharacterImage personaggio={personaggio} />
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-ink">{personaggio.nome_originale}</h3>
+                    {personaggio.nome_pinyin ? (
+                      <p className="mt-1 text-xs text-stone-500">{personaggio.nome_pinyin}</p>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-stone-600">
+                      {personaggio.genere ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.genere}</span> : null}
+                      {personaggio.fascia_eta ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.fascia_eta}</span> : null}
+                      {personaggio.lavoro ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.lavoro}</span> : null}
+                    </div>
+                  </div>
+                </div>
+                {personaggio.descrizione ? (
+                  <p className="text-sm leading-6 text-stone-700">{personaggio.descrizione}</p>
+                ) : null}
+              </article>
+            ))}
           </div>
         ) : (
-          <div className="mt-4 rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
+          <div className="border-t border-stone-200 p-5 text-sm text-stone-700">
             Non ci sono ancora personaggi per questa serie.
           </div>
         )}
-      </div>
+      </details>
 
-      <div>
-        <h2 className="text-xl font-semibold text-ink">Episodi</h2>
-        <div className="mt-4 overflow-hidden rounded-md border border-stone-200 bg-white">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="bg-stone-50 text-stone-700">
-              <tr>
-                <th className="px-4 py-3 font-medium">Stagione</th>
-                <th className="px-4 py-3 font-medium">Episodio</th>
-                <th className="px-4 py-3 font-medium">Titolo</th>
-                <th className="px-4 py-3 font-medium">Messa in onda</th>
-              </tr>
-            </thead>
-            <tbody>
-              {episodi.map((episodio) => (
-                <tr key={episodio.id} className="border-t border-stone-200">
-                  <td className="px-4 py-3 text-stone-700">{episodio.stagione ?? "-"}</td>
-                  <td className="px-4 py-3 text-stone-700">{episodio.numero_episodio ?? "-"}</td>
-                  <td className="px-4 py-3 font-medium text-ink">
-                    <Link href={`/episodi/${episodio.id}`} className="hover:text-cinnabar">
-                      {episodio.titolo_originale ?? "Senza titolo"}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-stone-700">{episodio.messa_in_onda ?? "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <details className="rounded-md border border-stone-200 bg-white" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">
+          <span>Episodi</span>
+          <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{episodi.length}</span>
+        </summary>
+        <div className="grid gap-3 border-t border-stone-200 p-4">
+          {episodi.length === 0 ? (
+            <div className="rounded-md border border-stone-200 p-5 text-sm text-stone-700">
+              Non ci sono ancora episodi per questa serie.
+            </div>
+          ) : hasMultipleSeasons ? (
+            episodeGroups.map(([season, seasonEpisodes]) => (
+              <details key={season ?? "none"} className="rounded-md border border-stone-200">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-semibold text-ink marker:hidden">
+                  <span>{seasonLabel(season)}</span>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">
+                    {seasonEpisodes.length} episodi
+                  </span>
+                </summary>
+                <EpisodeList episodes={seasonEpisodes} showSeason={false} />
+              </details>
+            ))
+          ) : (
+            <EpisodeList episodes={episodi} showSeason={false} />
+          )}
         </div>
-      </div>
+      </details>
     </section>
+  );
+}
+
+function EpisodeList({ episodes, showSeason }: { episodes: PublicEpisodio[]; showSeason: boolean }) {
+  return (
+    <div className="divide-y divide-stone-200 border-t border-stone-200">
+      {episodes.map((episodio) => (
+        <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto] md:items-center">
+          <div className="flex flex-wrap gap-2 text-xs text-stone-600">
+            {showSeason ? <span className="rounded-sm bg-stone-100 px-2 py-1">S{episodio.stagione ?? "-"}</span> : null}
+            <span className="rounded-sm bg-stone-100 px-2 py-1">E{episodio.numero_episodio ?? "-"}</span>
+          </div>
+          <Link href={`/episodi/${episodio.id}`} className="font-medium text-ink hover:text-cinnabar">
+            {episodio.titolo_originale ?? "Senza titolo"}
+          </Link>
+          <span className="text-stone-600">{episodio.messa_in_onda ?? ""}</span>
+        </article>
+      ))}
+    </div>
   );
 }
