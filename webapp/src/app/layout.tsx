@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/serie", label: "Serie TV" },
-  { href: "/frasi", label: "Frasi" },
+  { href: "/frasi", label: "Lessico" },
   { href: "/emozioni", label: "Emozioni" },
   { href: "/danmu", label: "Danmu" },
   { href: "/analisi", label: "Analisi" }

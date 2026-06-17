@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
+import { getAdminSession } from "@/app/access-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { TranscriptViewer } from "@/components/transcript-viewer";
+import { generateEpisodeAIFields } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,44 @@ type EpisodeNavRecord = {
   numero_episodio: number | null;
   titolo_originale: string | null;
 };
+
+type EpisodeNotice = {
+  status: "success" | "error";
+  message: string;
+};
+
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(searchParams: Record<string, string | string[] | undefined>): EpisodeNotice | null {
+  const status = getValue(searchParams.status);
+  const message = getValue(searchParams.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: EpisodeNotice }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
+}
 
 async function getEpisode(id: string) {
   if (!hasServerSupabaseConfig()) {
@@ -102,12 +143,17 @@ async function getEpisode(id: string) {
 }
 
 export default async function EpisodePage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const session = await getAdminSession();
   const { episodio, navigation, error } = await getEpisode(id);
+  const notice = getNotice(query);
 
   if (error) {
     return (
@@ -134,6 +180,14 @@ export default async function EpisodePage({
       </section>
     );
   }
+
+  const missingSummary = !episodio.sintesi_automatica?.trim();
+  const missingAnalysis = !episodio.analisi_tematica_emotiva?.trim();
+  const canGenerateAI = Boolean(session?.canEdit && episodio.trascrizione && (missingSummary || missingAnalysis));
+  const missingLabels = [
+    missingSummary ? "sintesi" : null,
+    missingAnalysis ? "analisi tematica ed emotiva" : null
+  ].filter(Boolean);
 
   return (
     <section className="grid gap-8">
@@ -189,6 +243,37 @@ export default async function EpisodePage({
           </Link>
         ) : null}
       </nav>
+
+      {notice ? <Notice notice={notice} /> : null}
+
+      {canGenerateAI ? (
+        <section className="rounded-md border border-stone-200 bg-white p-5">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Generazione AI</h2>
+              <p className="mt-2 text-sm leading-6 text-stone-700">
+                Mancano: {missingLabels.join(" e ")}. La sintesi puo usare trascrizione e contenuti online collegati; l'analisi tematica ed emotiva usa solo la trascrizione.
+              </p>
+            </div>
+            <form action={generateEpisodeAIFields}>
+              <input type="hidden" name="episodio_id" value={episodio.id} />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar"
+              >
+                <Sparkles size={16} aria-hidden="true" />
+                Genera con AI
+              </button>
+            </form>
+          </div>
+        </section>
+      ) : null}
+
+      {session?.canEdit && !episodio.trascrizione && (missingSummary || missingAnalysis) ? (
+        <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Serve una trascrizione per generare automaticamente sintesi e analisi.
+        </section>
+      ) : null}
 
       {episodio.sintesi_automatica ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">

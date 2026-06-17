@@ -134,7 +134,7 @@ async function getFrasi(filters: SearchParams) {
     const message =
       unknownError instanceof Error
         ? unknownError.message
-        : "Errore sconosciuto durante il caricamento delle frasi.";
+        : "Errore sconosciuto durante il caricamento del lessico.";
 
     return { frasi: [], options: emptyOptions, error: message };
   }
@@ -157,9 +157,9 @@ export default async function FrasiPage({
   return (
     <section className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-ink">Frasi e parole</h1>
+        <h1 className="text-2xl font-semibold text-ink">Lessico</h1>
         <p className="mt-3 text-stone-700">
-          Ricerca nelle trascrizioni pubbliche, con collegamenti a serie, episodi, personaggi ed emozioni.
+          Ricerca frasi, parole ed espressioni annotate nelle trascrizioni, con collegamenti a serie, episodi, personaggi ed emozioni.
         </p>
       </div>
 
@@ -230,13 +230,13 @@ export default async function FrasiPage({
 
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          Impossibile caricare le frasi: {error}
+          Impossibile caricare il lessico: {error}
         </div>
       ) : null}
 
       {!error && frasi.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-          Nessuna frase pubblica trovata con questi filtri.
+          Nessun elemento lessicale trovato con questi filtri.
         </div>
       ) : null}
 

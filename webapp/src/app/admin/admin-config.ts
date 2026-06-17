@@ -122,7 +122,7 @@ export const adminResources = [
   },
   {
     key: "frasi",
-    label: "Frasi e parole",
+    label: "Lessico",
     table: "frasi_parole",
     primaryKey: ["id"],
     orderBy: "created_at",

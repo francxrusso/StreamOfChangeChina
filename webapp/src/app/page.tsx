@@ -122,7 +122,7 @@ export default async function HomePage() {
     { label: "Episodi", value: stats.episodi, icon: BookOpen, href: "/serie", tone: "text-indigo" },
     { label: "Personaggi", value: stats.personaggi, icon: Users, href: "/admin?tab=personaggi", tone: "text-jade" },
     { label: "Emozioni", value: stats.emozioni, icon: HeartPulse, href: "/emozioni", tone: "text-rose-700" },
-    { label: "Frasi", value: stats.frasi, icon: Captions, href: "/frasi", tone: "text-amber-700" },
+    { label: "Lessico", value: stats.frasi, icon: Captions, href: "/frasi", tone: "text-amber-700" },
     { label: "Danmu", value: stats.danmu, icon: MessageSquareText, href: "/danmu", tone: "text-sky-700" },
     { label: "Analisi", value: stats.analisi, icon: Brain, href: "/analisi", tone: "text-violet-700" }
   ];
@@ -130,7 +130,7 @@ export default async function HomePage() {
   const quickLinks = [
     { href: "/admin?tab=serie", label: "Nuova serie", detail: "Aggiungi metadati e visibilita", icon: Clapperboard },
     { href: "/admin?tab=episodi", label: "Nuovo episodio", detail: "Trascrizione, sintesi e note", icon: BookOpen },
-    { href: "/admin?tab=frasi", label: "Nuova frase", detail: "Annota lessico, traduzione, emozioni", icon: Captions },
+    { href: "/admin?tab=frasi", label: "Nuovo elemento lessico", detail: "Annota frasi, parole, traduzioni ed emozioni", icon: Captions },
     { href: "/analisi", label: "Analizza trascrizione", detail: "Frequenze, ricorrenze e parole chiave", icon: Brain },
     { href: "/admin?tab=personaggi", label: "Nuovo personaggio", detail: "Ruolo, genere, fascia d'eta, lavoro", icon: Users },
     { href: "/admin/utenti", label: "Gestisci utenti", detail: "Accessi, password e permessi", icon: ShieldCheck }

@@ -166,7 +166,7 @@ export default async function EmozioniPage() {
                   href={`/frasi?emozione=${encodeURIComponent(emozione.nome)}`}
                   className="text-cinnabar hover:text-ink"
                 >
-                  Vedi frasi
+                  Vedi lessico
                 </Link>
                 <Link
                   href={`/danmu?emozione=${encodeURIComponent(emozione.nome)}`}

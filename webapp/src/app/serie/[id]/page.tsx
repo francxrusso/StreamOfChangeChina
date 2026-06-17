@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import {
   type PublicEpisodio,
   type PublicPersonaggio,
@@ -58,6 +59,10 @@ function groupEpisodesBySeason(episodes: PublicEpisodio[]) {
   }
 
   return [...groups.entries()].sort(([a], [b]) => (a ?? 0) - (b ?? 0));
+}
+
+function AccordionChevron() {
+  return <ChevronDown size={18} aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180" />;
 }
 
 async function getSerieDetail(id: string) {
@@ -200,10 +205,13 @@ export default async function SerieDetailPage({
         </div>
       </div>
 
-      <details className="rounded-md border border-stone-200 bg-white" open>
+      <details className="group rounded-md border border-stone-200 bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">
           <span>Personaggi</span>
-          <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{personaggi.length}</span>
+          <span className="flex items-center gap-3">
+            <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{personaggi.length}</span>
+            <AccordionChevron />
+          </span>
         </summary>
         {personaggi.length > 0 ? (
           <div className="grid gap-3 border-t border-stone-200 p-4 md:grid-cols-2">
@@ -236,10 +244,13 @@ export default async function SerieDetailPage({
         )}
       </details>
 
-      <details className="rounded-md border border-stone-200 bg-white" open>
+      <details className="group rounded-md border border-stone-200 bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">
           <span>Episodi</span>
-          <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{episodi.length}</span>
+          <span className="flex items-center gap-3">
+            <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{episodi.length}</span>
+            <AccordionChevron />
+          </span>
         </summary>
         <div className="grid gap-3 border-t border-stone-200 p-4">
           {episodi.length === 0 ? (
@@ -248,11 +259,14 @@ export default async function SerieDetailPage({
             </div>
           ) : hasMultipleSeasons ? (
             episodeGroups.map(([season, seasonEpisodes]) => (
-              <details key={season ?? "none"} className="rounded-md border border-stone-200">
+              <details key={season ?? "none"} className="group rounded-md border border-stone-200">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-semibold text-ink marker:hidden">
                   <span>{seasonLabel(season)}</span>
-                  <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">
-                    {seasonEpisodes.length} episodi
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">
+                      {seasonEpisodes.length} episodi
+                    </span>
+                    <AccordionChevron />
                   </span>
                 </summary>
                 <EpisodeList episodes={seasonEpisodes} showSeason={false} />
