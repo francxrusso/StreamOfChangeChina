@@ -1,5 +1,7 @@
+import { getAdminSession } from "@/app/access-actions";
 import { type PublicDanmu, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { DeleteDanmuButton } from "./delete-danmu-button";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +10,8 @@ type SearchParams = {
   serie?: string;
   emozione?: string;
   episodio?: string;
+  status?: string;
+  message?: string;
 };
 
 type OptionData = {
@@ -22,8 +26,42 @@ const emptyOptions: OptionData = {
   episodi: []
 };
 
+type DanmuNotice = {
+  status: "success" | "error";
+  message: string;
+};
+
 function getValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): DanmuNotice | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: DanmuNotice }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
 }
 
 function formatTime(seconds: number | null) {
@@ -144,7 +182,17 @@ export default async function DanmuPage({
     emozione: getValue(params.emozione),
     episodio: getValue(params.episodio)
   };
+  const notice = getNotice(params);
+  const session = await getAdminSession();
   const { danmu, options, error } = await getDanmu(filters);
+  const returnParams = new URLSearchParams();
+
+  if (filters.q) returnParams.set("q", filters.q);
+  if (filters.serie) returnParams.set("serie", filters.serie);
+  if (filters.emozione) returnParams.set("emozione", filters.emozione);
+  if (filters.episodio) returnParams.set("episodio", filters.episodio);
+
+  const returnTo = `/danmu${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
 
   return (
     <section className="grid gap-6">
@@ -220,6 +268,8 @@ export default async function DanmuPage({
         </div>
       </form>
 
+      {notice ? <Notice notice={notice} /> : null}
+
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           Impossibile caricare i Danmu: {error}
@@ -237,17 +287,22 @@ export default async function DanmuPage({
           <p className="text-sm text-stone-600">Mostro fino a 150 risultati.</p>
           {danmu.map((item) => (
             <article key={item.id} className="rounded-md border border-stone-200 bg-white p-5">
-              <div className="flex flex-wrap gap-2 text-xs text-stone-600">
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{item.serie_titolo_originale}</span>
-                {item.numero_episodio ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">Ep. {item.numero_episodio}</span>
-                ) : null}
-                {formatTime(item.timecode_secondi) ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">{formatTime(item.timecode_secondi)}</span>
-                ) : null}
-                {item.piattaforma ? <span className="rounded-sm bg-stone-100 px-2 py-1">{item.piattaforma}</span> : null}
-                {item.like_ricevuti ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">{item.like_ricevuti} like</span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap gap-2 text-xs text-stone-600">
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{item.serie_titolo_originale}</span>
+                  {item.numero_episodio ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">Ep. {item.numero_episodio}</span>
+                  ) : null}
+                  {formatTime(item.timecode_secondi) ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">{formatTime(item.timecode_secondi)}</span>
+                  ) : null}
+                  {item.piattaforma ? <span className="rounded-sm bg-stone-100 px-2 py-1">{item.piattaforma}</span> : null}
+                  {item.like_ricevuti ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">{item.like_ricevuti} like</span>
+                  ) : null}
+                </div>
+                {session?.canEdit ? (
+                  <DeleteDanmuButton id={item.id} label={item.testo_originale} returnTo={returnTo} />
                 ) : null}
               </div>
               <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{item.testo_originale}</h2>

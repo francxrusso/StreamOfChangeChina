@@ -9,6 +9,10 @@ type EmozioneWithCounts = PublicEmozione & {
   danmu_count: number;
 };
 
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
 function countByEmotion<T extends { emozioni: string[] | null; emozione_principale?: string | null }>(items: T[] | null) {
   const counts = new Map<string, number>();
 
@@ -26,7 +30,28 @@ function countByEmotion<T extends { emozioni: string[] | null; emozione_principa
   return counts;
 }
 
-async function getEmozioni() {
+function matchesSearch(emozione: EmozioneWithCounts, query: string) {
+  if (!query) {
+    return true;
+  }
+
+  const searchableText = [
+    emozione.nome,
+    emozione.descrizione,
+    emozione.colore_assoc,
+    emozione.colore_hex,
+    emozione.icona,
+    emozione.sintesi_frasi_collegate_ai,
+    emozione.analisi_semantica_frasi_ai
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(query.toLowerCase());
+}
+
+async function getEmozioni(filters: { q: string }) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
@@ -35,6 +60,8 @@ async function getEmozioni() {
       error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
   }
+
+  const q = filters.q.trim();
 
   try {
     const [{ data: emozioni }, { data: frasi, error: frasiError }, { data: danmu, error: danmuError }] =
@@ -86,8 +113,10 @@ async function getEmozioni() {
         danmu_count: danmuCounts.get(nome) ?? 0
       }));
 
+    const allEmozioni = [...fullEmozioni, ...publicOnlyEmozioni].sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+
     return {
-      emozioni: [...fullEmozioni, ...publicOnlyEmozioni].sort((a, b) => a.nome.localeCompare(b.nome, "it")),
+      emozioni: allEmozioni.filter((emozione) => matchesSearch(emozione, q)),
       error: null
     };
   } catch (unknownError) {
@@ -100,8 +129,16 @@ async function getEmozioni() {
   }
 }
 
-export default async function EmozioniPage() {
-  const { emozioni, error } = await getEmozioni();
+export default async function EmozioniPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const filters = {
+    q: getValue(params.q)
+  };
+  const { emozioni, error } = await getEmozioni(filters);
 
   return (
     <section className="grid gap-6">
@@ -112,6 +149,26 @@ export default async function EmozioniPage() {
         </p>
       </div>
 
+      <form className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 md:grid-cols-[1fr_auto]" action="/emozioni">
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Ricerca</span>
+          <input
+            name="q"
+            defaultValue={filters.q}
+            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+            placeholder="Nome, descrizione, colore, analisi"
+          />
+        </label>
+        <div className="flex items-end gap-3">
+          <button className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-cinnabar">
+            Cerca
+          </button>
+          <Link href="/emozioni" className="px-2 py-2 text-sm font-medium text-cinnabar hover:text-ink">
+            Azzera
+          </Link>
+        </div>
+      </form>
+
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           Impossibile caricare le emozioni: {error}
@@ -120,7 +177,7 @@ export default async function EmozioniPage() {
 
       {!error && emozioni.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-          Non ci sono ancora emozioni nel vocabolario controllato.
+          Nessuna emozione trovata con questi criteri.
         </div>
       ) : null}
 
