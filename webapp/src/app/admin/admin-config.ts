@@ -14,7 +14,7 @@ export type AdminField = {
   type: AdminFieldType;
   required?: boolean;
   options?: string[];
-  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmuAnalizzati" | "danmuRaw";
+  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmu";
 };
 
 export type AdminResource = {
@@ -149,13 +149,13 @@ export const adminResources = [
     ]
   },
   {
-    key: "danmu_raw",
-    label: "Danmu raw",
-    table: "danmu_raw",
+    key: "danmu",
+    label: "Danmu",
+    table: "danmu",
     primaryKey: ["id"],
     orderBy: "created_at",
-    summaryFields: ["testo_originale", "serie_id", "timecode_secondi", "sentiment"],
-    searchFields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "piattaforma", "sentiment", "note"],
+    summaryFields: ["testo_originale", "serie_id", "timecode_secondi", "visibility"],
+    searchFields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "piattaforma", "sentiment", "nota_analisi", "note_admin", "note"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "episodio_id", label: "Episodio", type: "uuid", relation: "episodi" },
@@ -169,24 +169,12 @@ export const adminResources = [
       { name: "sentiment", label: "Sentiment", type: "text" },
       { name: "colore", label: "Colore", type: "text" },
       { name: "like_ricevuti", label: "Like ricevuti", type: "number" },
-      { name: "note", label: "Note", type: "textarea" },
-      { name: "import_batch_id", label: "Import batch ID", type: "uuid" },
-      { name: "source_row_number", label: "Numero riga origine", type: "number" }
-    ]
-  },
-  {
-    key: "danmu_analizzati",
-    label: "Danmu analizzati",
-    table: "danmu_analizzati",
-    primaryKey: ["id"],
-    orderBy: "created_at",
-    summaryFields: ["danmu_raw_id", "nota_analisi", "visibility"],
-    searchFields: ["nota_analisi", "note_admin"],
-    fields: [
-      { name: "danmu_raw_id", label: "Danmu raw", type: "uuid", relation: "danmuRaw", required: true },
       { name: "nota_analisi", label: "Nota analisi", type: "textarea" },
       { name: "note_admin", label: "Note admin", type: "textarea" },
-      { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true }
+      { name: "note", label: "Note", type: "textarea" },
+      { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true },
+      { name: "import_batch_id", label: "Import batch ID", type: "uuid" },
+      { name: "source_row_number", label: "Numero riga origine", type: "number" }
     ]
   },
   {
@@ -206,10 +194,10 @@ export const adminResources = [
     key: "danmu_emozioni",
     label: "Emozioni danmu",
     table: "danmu_emozioni",
-    primaryKey: ["danmu_analizzato_id", "emozione_id"],
-    summaryFields: ["danmu_analizzato_id", "emozione_id", "intensita"],
+    primaryKey: ["danmu_id", "emozione_id"],
+    summaryFields: ["danmu_id", "emozione_id", "intensita"],
     fields: [
-      { name: "danmu_analizzato_id", label: "Danmu analizzato", type: "uuid", relation: "danmuAnalizzati", required: true },
+      { name: "danmu_id", label: "Danmu", type: "uuid", relation: "danmu", required: true },
       { name: "emozione_id", label: "Emozione", type: "uuid", relation: "emozioni", required: true },
       { name: "intensita", label: "Intensita", type: "number" },
       { name: "note", label: "Note", type: "textarea" }

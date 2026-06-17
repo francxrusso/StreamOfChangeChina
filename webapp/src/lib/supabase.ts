@@ -118,7 +118,6 @@ export type PublicFraseParola = {
 
 export type PublicDanmu = {
   id: string;
-  danmu_raw_id: string;
   serie_id: string;
   serie_titolo_originale: string;
   stagione: number | null;

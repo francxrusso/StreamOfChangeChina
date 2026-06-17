@@ -68,7 +68,7 @@ async function getHomeData() {
     supabase.from("personaggi").select("*", { count: "exact", head: true }),
     supabase.from("emozioni").select("*", { count: "exact", head: true }),
     supabase.from("frasi_parole").select("*", { count: "exact", head: true }),
-    supabase.from("danmu_raw").select("*", { count: "exact", head: true }),
+    supabase.from("danmu").select("*", { count: "exact", head: true }),
     supabase.from("analisi_episodi").select("*", { count: "exact", head: true }),
     supabase
       .from("serie_tv")

@@ -5,7 +5,7 @@ begin;
 
 create unique index if not exists idx_serie_tv_titolo_originale_unique on serie_tv(titolo_originale);
 create unique index if not exists idx_frasi_parole_unique_import on frasi_parole(serie_id, (coalesce(episodio_id, '00000000-0000-0000-0000-000000000000'::uuid)), frase_originale);
-create unique index if not exists idx_danmu_raw_unique_import on danmu_raw(serie_id, (coalesce(episodio_id, '00000000-0000-0000-0000-000000000000'::uuid)), testo_originale);
+create unique index if not exists idx_danmu_unique_import on danmu(serie_id, (coalesce(episodio_id, '00000000-0000-0000-0000-000000000000'::uuid)), testo_originale);
 
 insert into serie_tv (titolo_originale, titolo_inglese, descrizione, anno, stagioni, genere, poster_url, frasi_parole_ricorrenti_ai, visibility)
 values ('光·渊', 'Justice In The Dark', 'Tratto dal romanzo thriller BL di Priest "Modu" e racconta la storia del capitano della squadra investigativa criminale Luo Weizhao e del detective tirocinante Pei Su che lavorano insieme per risolvere i casi.', 2023, 1, 'Poliziesco 探案剧,Danmei 耽美', 'https://v5.airtableusercontent.com/v3/u/52/52/1777464000000/1-jdvdKU_kYM8LZBT7tI6g/9iU2fUoMQAbdZEIpWpzkdYzBmfjAVVXpnq6GH2ljrlw6wBqerydj1JpT3uPCjuvbomxUWQYwyQJ589HmigxLu3TD8OdppjAzArGM_8mQW6SWWJltDQ30E5fYcLJyqbxEhCsBRv0fs_PJFY1onyULHQUPbO4IYSpsF3qqx11ecdg/3jxJXW--XpnT9Tfj6v-apFmHgezS3lBokYc2wKsteSE', null, 'public')
@@ -80608,7 +80608,7 @@ on conflict (frase_id, emozione_id) do update set intensita = excluded.intensita
 
 with target_serie as (select id from serie_tv where titolo_originale = '爱情公寓' limit 1),
 target_episode as (select episodi.id from episodi join target_serie on target_serie.id = episodi.serie_id where episodi.titolo_originale = '新人入住 Xīnrén rùzhù' limit 1)
-insert into danmu_raw (serie_id, episodio_id, testo_originale, traduzione_italiana, data_commento, timecode_secondi, sentiment, colore, like_ricevuti, note, source_row_number)
+insert into danmu (serie_id, episodio_id, testo_originale, traduzione_italiana, data_commento, timecode_secondi, sentiment, colore, like_ricevuti, note, source_row_number)
 select target_serie.id, target_episode.id, 'prova', null, null, null, null, null, null, null, 1 from target_serie left join target_episode on true
 on conflict do nothing;
 

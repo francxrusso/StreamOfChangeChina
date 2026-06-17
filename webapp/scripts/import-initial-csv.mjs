@@ -328,7 +328,7 @@ for (const [index, row] of files.danmu.entries()) {
 
   await insertOrUpdate(
     supabase,
-    "danmu_raw",
+    "danmu",
     { serie_id: serie.id, testo_originale: testo },
     {
       serie_id: serie.id,
