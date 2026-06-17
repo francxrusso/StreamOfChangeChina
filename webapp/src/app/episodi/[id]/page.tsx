@@ -183,11 +183,8 @@ export default async function EpisodePage({
 
   const missingSummary = !episodio.sintesi_automatica?.trim();
   const missingAnalysis = !episodio.analisi_tematica_emotiva?.trim();
-  const canGenerateAI = Boolean(session?.canEdit && episodio.trascrizione && (missingSummary || missingAnalysis));
-  const missingLabels = [
-    missingSummary ? "sintesi" : null,
-    missingAnalysis ? "analisi tematica ed emotiva" : null
-  ].filter(Boolean);
+  const canGenerateAI = Boolean(session?.canEdit && episodio.trascrizione);
+  const shouldRegenerateAI = !missingSummary && !missingAnalysis;
 
   return (
     <section className="grid gap-8">
@@ -250,19 +247,20 @@ export default async function EpisodePage({
         <section className="rounded-md border border-stone-200 bg-white p-5">
           <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="text-lg font-semibold text-ink">Analisi automatica gratuita</h2>
+              <h2 className="text-lg font-semibold text-ink">Genera un'analisi AI basata sulla trascrizione</h2>
               <p className="mt-2 text-sm leading-6 text-stone-700">
-                Mancano: {missingLabels.join(" e ")}. La generazione usa la trascrizione e l'analisi lessicale del mandarino, senza chiamate API a pagamento.
+                Crea o aggiorna una sintesi della puntata e una lettura tematica ed emotiva partendo dal testo dell'episodio.
               </p>
             </div>
             <form action={generateEpisodeAIFields}>
               <input type="hidden" name="episodio_id" value={episodio.id} />
+              {shouldRegenerateAI ? <input type="hidden" name="force_regenerate" value="true" /> : null}
               <button
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar"
               >
                 <Sparkles size={16} aria-hidden="true" />
-                Genera analisi AI
+                {shouldRegenerateAI ? "Rigenera analisi AI" : "Genera analisi AI"}
               </button>
             </form>
           </div>

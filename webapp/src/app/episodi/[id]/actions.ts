@@ -31,10 +31,14 @@ function getErrorMessage(error: unknown) {
 
 export async function generateEpisodeAIFields(formData: FormData) {
   const episodeId = String(formData.get("episodio_id") ?? "");
+  const forceRegenerate = formData.get("force_regenerate") === "true";
 
   if (!episodeId) {
     throw new Error("Episodio mancante.");
   }
+
+  let redirectStatus: "success" | "error" = "success";
+  let redirectMessage = "";
 
   try {
     await requireEditSession();
@@ -66,51 +70,56 @@ export async function generateEpisodeAIFields(formData: FormData) {
       throw new Error("Serve una trascrizione per generare sintesi e analisi.");
     }
 
-    const missingSummary = !episode.sintesi_automatica?.trim();
-    const missingAnalysis = !episode.analisi_tematica_emotiva?.trim();
+    const missingSummary = forceRegenerate || !episode.sintesi_automatica?.trim();
+    const missingAnalysis = forceRegenerate || !episode.analisi_tematica_emotiva?.trim();
 
     if (!missingSummary && !missingAnalysis) {
-      episodeRedirect(episodeId, "success", "Sintesi e analisi erano gia presenti. Non ho sovrascritto nulla.");
+      redirectMessage = "Sintesi e analisi erano gia presenti. Non ho sovrascritto nulla.";
+    } else {
+      const aiInput = {
+        serieTitle: episode.serie_tv?.titolo_originale ?? "Serie non specificata",
+        episodeTitle: episode.titolo_originale,
+        season: episode.stagione,
+        episodeNumber: episode.numero_episodio,
+        transcript: episode.trascrizione,
+        episodeLink: episode.link_episodio
+      };
+
+      const updates: {
+        sintesi_automatica?: string;
+        analisi_tematica_emotiva?: string;
+      } = {};
+
+      if (missingSummary) {
+        updates.sintesi_automatica = await generateEpisodeSummary(aiInput);
+      }
+
+      if (missingAnalysis) {
+        updates.analisi_tematica_emotiva = await generateEpisodeThematicEmotionalAnalysis(aiInput);
+      }
+
+      const { error: updateError } = await supabase.from("episodi").update(updates).eq("id", episodeId);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      revalidatePath(`/episodi/${episodeId}`);
+      revalidatePath(`/serie/${episode.serie_id}`);
+
+      const generatedFields = [
+        missingSummary ? "sintesi" : null,
+        missingAnalysis ? "analisi tematica ed emotiva" : null
+      ].filter(Boolean);
+
+      redirectMessage = forceRegenerate
+        ? `Rigenerazione completata: ${generatedFields.join(" e ")} aggiornate.`
+        : `Generazione completata: ${generatedFields.join(" e ")} generate.`;
     }
-
-    const aiInput = {
-      serieTitle: episode.serie_tv?.titolo_originale ?? "Serie non specificata",
-      episodeTitle: episode.titolo_originale,
-      season: episode.stagione,
-      episodeNumber: episode.numero_episodio,
-      transcript: episode.trascrizione,
-      episodeLink: episode.link_episodio
-    };
-
-    const updates: {
-      sintesi_automatica?: string;
-      analisi_tematica_emotiva?: string;
-    } = {};
-
-    if (missingSummary) {
-      updates.sintesi_automatica = await generateEpisodeSummary(aiInput);
-    }
-
-    if (missingAnalysis) {
-      updates.analisi_tematica_emotiva = await generateEpisodeThematicEmotionalAnalysis(aiInput);
-    }
-
-    const { error: updateError } = await supabase.from("episodi").update(updates).eq("id", episodeId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
-
-    revalidatePath(`/episodi/${episodeId}`);
-    revalidatePath(`/serie/${episode.serie_id}`);
-
-    const generatedFields = [
-      missingSummary ? "sintesi" : null,
-      missingAnalysis ? "analisi tematica ed emotiva" : null
-    ].filter(Boolean);
-
-    episodeRedirect(episodeId, "success", `Analisi automatica completata: ${generatedFields.join(" e ")} generate.`);
   } catch (error) {
-    episodeRedirect(episodeId, "error", getErrorMessage(error));
+    redirectStatus = "error";
+    redirectMessage = getErrorMessage(error);
   }
+
+  episodeRedirect(episodeId, redirectStatus, redirectMessage);
 }

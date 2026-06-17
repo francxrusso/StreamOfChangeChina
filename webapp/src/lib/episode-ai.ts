@@ -40,6 +40,45 @@ const emotionSignals: LocalSignal[] = [
   { label: "amore e affetto", terms: ["爱", "喜欢", "亲", "抱", "想你", "心", "温柔"] }
 ];
 
+const narrativeSignals = [
+  {
+    label: "indagine criminale",
+    terms: ["案", "案件", "凶手", "杀手", "杀人", "连环", "尸体", "死亡", "证据", "嫌疑", "调查", "抓住", "逮捕"],
+    sentence:
+      "La puntata ruota attorno a un'indagine: i personaggi cercano di ricostruire un caso, interpretare gli indizi e arrivare all'identificazione del responsabile."
+  },
+  {
+    label: "mistero e rivelazione",
+    terms: ["秘密", "真相", "发现", "知道", "明白", "线索", "隐藏", "骗", "怀疑", "奇怪"],
+    sentence:
+      "La puntata costruisce un percorso di scoperta: una verita o un'informazione nascosta orienta le azioni dei personaggi e modifica la lettura degli eventi."
+  },
+  {
+    label: "relazioni sentimentali",
+    terms: ["爱", "喜欢", "女朋友", "男朋友", "结婚", "分手", "约会", "亲", "心", "想你"],
+    sentence:
+      "La puntata mette al centro una dinamica sentimentale, fatta di desideri, incomprensioni e tentativi di chiarire il rapporto tra i personaggi."
+  },
+  {
+    label: "amicizia e convivenza",
+    terms: ["朋友", "大家", "一起", "帮", "家", "房子", "邻居", "住", "公寓", "生活"],
+    sentence:
+      "La puntata segue la vita quotidiana del gruppo, con situazioni di convivenza, amicizia e piccoli conflitti che fanno avanzare le relazioni."
+  },
+  {
+    label: "lavoro e responsabilita",
+    terms: ["工作", "公司", "老板", "同事", "任务", "钱", "合同", "计划", "决定", "机会"],
+    sentence:
+      "La puntata si concentra su lavoro, responsabilita e decisioni pratiche, mostrando come i personaggi reagiscono a pressioni e obiettivi concreti."
+  },
+  {
+    label: "conflitto personale",
+    terms: ["吵架", "生气", "误会", "麻烦", "压力", "失败", "担心", "伤心", "选择", "改变"],
+    sentence:
+      "La puntata sviluppa un conflitto personale: tensioni, incomprensioni o scelte difficili spingono i personaggi a ridefinire le proprie posizioni."
+  }
+];
+
 function getOpenAIConfig() {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -150,6 +189,20 @@ function formatSignals(signals: { label: string; hits: number }[]) {
   return signals.map((signal) => `${signal.label} (${signal.hits})`).join(", ");
 }
 
+function getDominantNarrative(transcript: string) {
+  return narrativeSignals
+    .map((signal) => {
+      const hits = signal.terms.reduce((total, term) => {
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return total + (transcript.match(new RegExp(escaped, "gu"))?.length ?? 0);
+      }, 0);
+
+      return { ...signal, hits };
+    })
+    .filter((signal) => signal.hits > 0)
+    .sort((a, b) => b.hits - a.hits || a.label.localeCompare(b.label, "it"));
+}
+
 function getLocalAnalysis(input: GenerateEpisodeAIInput) {
   const analysis = analyzeTranscript(input.transcript);
   const topWords = analysis.topParole.slice(0, 10).map((item) => item.parola);
@@ -157,6 +210,7 @@ function getLocalAnalysis(input: GenerateEpisodeAIInput) {
   const salientSentences = getSalientSentences(input.transcript, topWords);
   const themes = countSignalTerms(input.transcript, themeSignals);
   const emotions = countSignalTerms(input.transcript, emotionSignals);
+  const narratives = getDominantNarrative(input.transcript);
 
   return {
     analysis,
@@ -164,34 +218,33 @@ function getLocalAnalysis(input: GenerateEpisodeAIInput) {
     topPhrases,
     salientSentences,
     themes,
-    emotions
+    emotions,
+    narratives
   };
 }
 
 function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
-  const { analysis, topWords, topPhrases, salientSentences } = getLocalAnalysis(input);
-  const episodeLabel = [
-    input.serieTitle,
-    input.season ? `stagione ${input.season}` : null,
-    input.episodeNumber ? `episodio ${input.episodeNumber}` : null
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const phraseText = topPhrases.length > 0 ? ` Le combinazioni ricorrenti piu forti sono: ${formatList(topPhrases)}.` : "";
+  const { topWords, topPhrases, salientSentences, narratives } = getLocalAnalysis(input);
+  const mainNarrative =
+    narratives[0]?.sentence ??
+    "La puntata ruota attorno agli snodi principali emersi nella trascrizione, mettendo in relazione azioni, decisioni e reazioni dei personaggi.";
+  const secondaryNarratives = narratives.slice(1, 3).map((signal) => signal.label);
+  const secondaryText =
+    secondaryNarratives.length > 0 ? ` In secondo piano emergono anche ${formatList(secondaryNarratives)}.` : "";
+  const phraseText = topPhrases.length > 0 ? ` Ricorrono inoltre formule e combinazioni come ${formatList(topPhrases)}.` : "";
   const sentenceText =
     salientSentences.length > 0
-      ? ` Frasi salienti individuate nella trascrizione: ${salientSentences.map((sentence) => `"${sentence}"`).join(" ")}`
+      ? ` I passaggi piu rappresentativi della trascrizione insistono su: ${salientSentences.slice(0, 2).map((sentence) => `"${sentence}"`).join(" ")}`
       : "";
 
-  return `Sintesi automatica gratuita basata solo sulla trascrizione. In ${episodeLabel || "questo episodio"} il contenuto appare concentrato intorno ai nuclei lessicali ${formatList(topWords.slice(0, 7))}. La trascrizione contiene ${analysis.totaleToken} parole significative segmentate e ${analysis.tokenUnici} parole uniche; questo consente di leggere temi, ripetizioni e campi semantici senza usare API esterne.${phraseText}${sentenceText}`;
+  return `${mainNarrative}${secondaryText} La lettura dell'argomento e sostenuta da nuclei lessicali come ${formatList(topWords.slice(0, 6))}.${phraseText}${sentenceText}`;
 }
 
 function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
   const { analysis, topWords, topPhrases, themes, emotions } = getLocalAnalysis(input);
   const phraseText = topPhrases.length > 0 ? ` Le co-occorrenze piu ricorrenti sono ${formatList(topPhrases)}.` : "";
 
-  return `Analisi tematica ed emotiva gratuita basata esclusivamente sulla trascrizione. I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Le parole ad alta frequenza (${formatList(topWords.slice(0, 8))}) suggeriscono i principali campi semantici dell'episodio; il dato va letto come supporto analitico quantitativo, non come interpretazione narrativa completa.${phraseText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
+  return `I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Le parole ad alta frequenza (${formatList(topWords.slice(0, 8))}) suggeriscono i principali campi semantici dell'episodio; il dato va letto come supporto analitico quantitativo, non come interpretazione narrativa completa.${phraseText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
 }
 
 function extractOutputText(response: unknown) {
