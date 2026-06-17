@@ -46,6 +46,12 @@ function parseOptionalNumber(value: FormDataEntryValue | null) {
   return Number.isFinite(number) ? number : null;
 }
 
+function parseTextList(values: FormDataEntryValue[]) {
+  return values
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+}
+
 export async function generateEpisodeAIFields(formData: FormData) {
   const episodeId = String(formData.get("episodio_id") ?? "");
   const forceRegenerate = formData.get("force_regenerate") === "true";
@@ -166,12 +172,13 @@ export async function createEpisodeLessico(formData: FormData) {
       throw new Error("Inserisci una frase, parola o espressione.");
     }
 
-    const emozioneId = parseOptionalText(formData.get("emozione_principale_id"));
+    const emozioneIds = parseTextList(formData.getAll("emozione_ids"));
+    const emozionePrincipaleId = emozioneIds[0] ?? null;
     const payload = {
       serie_id: serieId,
       episodio_id: episodeId,
       personaggio_id: parseOptionalText(formData.get("personaggio_id")),
-      emozione_principale_id: emozioneId,
+      emozione_principale_id: emozionePrincipaleId,
       timecode_inizio_secondi: parseOptionalNumber(formData.get("timecode_inizio_secondi")),
       timecode_fine_secondi: parseOptionalNumber(formData.get("timecode_fine_secondi")),
       tipo: parseOptionalText(formData.get("tipo")) ?? "Frase",
@@ -193,13 +200,20 @@ export async function createEpisodeLessico(formData: FormData) {
 
     const fraseId = (data as { id: string } | null)?.id;
 
-    if (fraseId && emozioneId) {
+    if (fraseId && emozioneIds.length > 0) {
       const { error: emotionError } = await supabase
         .from("frasi_emozioni")
-        .upsert({ frase_id: fraseId, emozione_id: emozioneId, intensita: 3 }, { onConflict: "frase_id,emozione_id" });
+        .upsert(
+          emozioneIds.map((emozioneId) => ({
+            frase_id: fraseId,
+            emozione_id: emozioneId,
+            intensita: 3
+          })),
+          { onConflict: "frase_id,emozione_id" }
+        );
 
       if (emotionError) {
-        throw new Error(`Lessico creato, ma collegamento emozione non riuscito: ${emotionError.message}`);
+        throw new Error(`Lessico creato, ma collegamento emozioni non riuscito: ${emotionError.message}`);
       }
     }
 

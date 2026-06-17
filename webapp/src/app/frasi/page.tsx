@@ -1,5 +1,7 @@
+import { getAdminSession } from "@/app/access-actions";
 import { type PublicFraseParola, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { DeleteLessicoButton } from "./delete-lessico-button";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +10,8 @@ type SearchParams = {
   serie?: string;
   emozione?: string;
   personaggio?: string;
+  status?: string;
+  message?: string;
 };
 
 type OptionData = {
@@ -22,8 +26,42 @@ const emptyOptions: OptionData = {
   personaggi: []
 };
 
+type FrasiNotice = {
+  status: "success" | "error";
+  message: string;
+};
+
 function getValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): FrasiNotice | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: FrasiNotice }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
 }
 
 function formatTime(seconds: number | null) {
@@ -152,7 +190,17 @@ export default async function FrasiPage({
     emozione: getValue(params.emozione),
     personaggio: getValue(params.personaggio)
   };
+  const notice = getNotice(params);
+  const session = await getAdminSession();
   const { frasi, options, error } = await getFrasi(filters);
+  const returnParams = new URLSearchParams();
+
+  if (filters.q) returnParams.set("q", filters.q);
+  if (filters.serie) returnParams.set("serie", filters.serie);
+  if (filters.emozione) returnParams.set("emozione", filters.emozione);
+  if (filters.personaggio) returnParams.set("personaggio", filters.personaggio);
+
+  const returnTo = `/frasi${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
 
   return (
     <section className="grid gap-6">
@@ -228,6 +276,8 @@ export default async function FrasiPage({
         </div>
       </form>
 
+      {notice ? <Notice notice={notice} /> : null}
+
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           Impossibile caricare il lessico: {error}
@@ -245,17 +295,22 @@ export default async function FrasiPage({
           <p className="text-sm text-stone-600">Mostro fino a 100 risultati.</p>
           {frasi.map((frase) => (
             <article key={frase.id} className="rounded-md border border-stone-200 bg-white p-5">
-              <div className="flex flex-wrap gap-2 text-xs text-stone-600">
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{frase.serie_titolo_originale}</span>
-                {frase.numero_episodio ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">Ep. {frase.numero_episodio}</span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap gap-2 text-xs text-stone-600">
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{frase.serie_titolo_originale}</span>
+                  {frase.numero_episodio ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">Ep. {frase.numero_episodio}</span>
+                  ) : null}
+                  {formatTime(frase.timecode_inizio_secondi) ? (
+                    <span className="rounded-sm bg-stone-100 px-2 py-1">
+                      {formatTime(frase.timecode_inizio_secondi)}
+                    </span>
+                  ) : null}
+                  {frase.tipo ? <span className="rounded-sm bg-stone-100 px-2 py-1">{frase.tipo}</span> : null}
+                </div>
+                {session?.canEdit ? (
+                  <DeleteLessicoButton id={frase.id} label={frase.frase_originale} returnTo={returnTo} />
                 ) : null}
-                {formatTime(frase.timecode_inizio_secondi) ? (
-                  <span className="rounded-sm bg-stone-100 px-2 py-1">
-                    {formatTime(frase.timecode_inizio_secondi)}
-                  </span>
-                ) : null}
-                {frase.tipo ? <span className="rounded-sm bg-stone-100 px-2 py-1">{frase.tipo}</span> : null}
               </div>
               <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{frase.frase_originale}</h2>
               {frase.frase_pinyin ? <p className="mt-2 text-sm text-stone-600">{frase.frase_pinyin}</p> : null}

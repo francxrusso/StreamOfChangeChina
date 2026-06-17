@@ -146,19 +146,20 @@ export function QuickLessicoModal({ episodeId, serieId, personaggi, emozioni }: 
                 </label>
 
                 <label className="grid gap-1 text-sm">
-                  <span className="font-medium text-ink">Emozione</span>
+                  <span className="font-medium text-ink">Emozioni</span>
                   <select
-                    name="emozione_principale_id"
-                    defaultValue=""
+                    name="emozione_ids"
+                    multiple
+                    size={Math.min(Math.max(emozioni.length, 3), 6)}
                     className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
                   >
-                    <option value="">Nessuna</option>
                     {emozioni.map((emozione) => (
                       <option key={emozione.id} value={emozione.id}>
                         {emozione.label}
                       </option>
                     ))}
                   </select>
+                  <span className="text-xs text-stone-500">Tieni premuto Cmd/Ctrl per selezionare piu emozioni.</span>
                 </label>
               </div>
 
