@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "../access-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase";
+import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { getAdminResource, type AdminField } from "./admin-config";
 
 type AdminValue = string | number | null;
@@ -32,6 +33,34 @@ function buildPayload(formData: FormData) {
 
   for (const field of resource.fields) {
     payload[field.name] = parseValue(field, formData.get(field.name));
+  }
+
+  if (resource.key === "serie") {
+    payload.titolo_pinyin = maybeGeneratePinyin(
+      typeof payload.titolo_pinyin === "string" ? payload.titolo_pinyin : null,
+      typeof payload.titolo_originale === "string" ? payload.titolo_originale : null
+    );
+  }
+
+  if (resource.key === "personaggi") {
+    payload.nome_pinyin = maybeGeneratePinyin(
+      typeof payload.nome_pinyin === "string" ? payload.nome_pinyin : null,
+      typeof payload.nome_originale === "string" ? payload.nome_originale : null
+    );
+  }
+
+  if (resource.key === "frasi") {
+    payload.frase_pinyin = maybeGeneratePinyin(
+      typeof payload.frase_pinyin === "string" ? payload.frase_pinyin : null,
+      typeof payload.frase_originale === "string" ? payload.frase_originale : null
+    );
+  }
+
+  if (resource.key === "danmu") {
+    payload.testo_pinyin = maybeGeneratePinyin(
+      typeof payload.testo_pinyin === "string" ? payload.testo_pinyin : null,
+      typeof payload.testo_originale === "string" ? payload.testo_originale : null
+    );
   }
 
   return { resource, payload };

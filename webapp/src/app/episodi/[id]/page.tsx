@@ -4,6 +4,7 @@ import { getAdminSession } from "@/app/access-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { TranscriptViewer } from "@/components/transcript-viewer";
 import { generateEpisodeAIFields } from "./actions";
+import { QuickLessicoModal } from "./quick-lessico-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,21 @@ type EpisodeNavRecord = {
 type EpisodeNotice = {
   status: "success" | "error";
   message: string;
+};
+
+type QuickLessicoOption = {
+  id: string;
+  label: string;
+};
+
+type QuickLessicoOptions = {
+  personaggi: QuickLessicoOption[];
+  emozioni: QuickLessicoOption[];
+};
+
+const emptyQuickLessicoOptions: QuickLessicoOptions = {
+  personaggi: [],
+  emozioni: []
 };
 
 function getValue(value: string | string[] | undefined) {
@@ -142,6 +158,34 @@ async function getEpisode(id: string) {
   }
 }
 
+async function getQuickLessicoOptions(serieId: string): Promise<QuickLessicoOptions> {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
+    return emptyQuickLessicoOptions;
+  }
+
+  const [{ data: personaggi }, { data: emozioni }] = await Promise.all([
+    supabase
+      .from("personaggi")
+      .select("id,nome_originale,nome_italiano")
+      .eq("serie_id", serieId)
+      .order("nome_originale", { ascending: true }),
+    supabase.from("emozioni").select("id,nome").order("nome", { ascending: true })
+  ]);
+
+  return {
+    personaggi: (personaggi ?? []).map((personaggio) => ({
+      id: String(personaggio.id),
+      label: [personaggio.nome_originale, personaggio.nome_italiano].filter(Boolean).join(" / ")
+    })),
+    emozioni: (emozioni ?? []).map((emozione) => ({
+      id: String(emozione.id),
+      label: String(emozione.nome)
+    }))
+  };
+}
+
 export default async function EpisodePage({
   params,
   searchParams
@@ -185,6 +229,9 @@ export default async function EpisodePage({
   const missingAnalysis = !episodio.analisi_tematica_emotiva?.trim();
   const canGenerateAI = Boolean(session?.canEdit && episodio.trascrizione);
   const shouldRegenerateAI = !missingSummary && !missingAnalysis;
+  const quickLessicoOptions = session?.canEdit
+    ? await getQuickLessicoOptions(episodio.serie_id)
+    : emptyQuickLessicoOptions;
 
   return (
     <section className="grid gap-8">
@@ -288,7 +335,17 @@ export default async function EpisodePage({
       ) : null}
 
       <section className="rounded-md border border-stone-200 bg-white p-5">
-        <h2 className="text-lg font-semibold text-ink">Trascrizione</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-ink">Trascrizione</h2>
+          {session?.canEdit ? (
+            <QuickLessicoModal
+              episodeId={episodio.id}
+              serieId={episodio.serie_id}
+              personaggi={quickLessicoOptions.personaggi}
+              emozioni={quickLessicoOptions.emozioni}
+            />
+          ) : null}
+        </div>
         {episodio.trascrizione ? (
           <TranscriptViewer text={episodio.trascrizione} />
         ) : (

@@ -78,6 +78,10 @@ function inputType(field: AdminField) {
   return field.type;
 }
 
+function isPinyinField(field: AdminField) {
+  return field.name.endsWith("_pinyin");
+}
+
 function fieldDefaultValue(field: AdminField, value: Row[string] | undefined) {
   if (value === null || value === undefined) {
     if (field.name === "visibility") {
@@ -144,6 +148,7 @@ function FieldControl({
         defaultValue={defaultValue}
         required={field.required}
         rows={field.name === "trascrizione" ? 8 : 4}
+        placeholder={isPinyinField(field) ? "Lascia vuoto per generarlo automaticamente" : undefined}
         className={baseClass}
       />
     );
@@ -155,6 +160,7 @@ function FieldControl({
       type={inputType(field)}
       step={field.type === "decimal" ? "0.001" : undefined}
       defaultValue={defaultValue}
+      placeholder={isPinyinField(field) ? "Lascia vuoto per generarlo automaticamente" : undefined}
       required={field.required}
       className={baseClass}
     />
