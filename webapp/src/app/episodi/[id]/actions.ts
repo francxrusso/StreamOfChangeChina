@@ -109,7 +109,7 @@ export async function generateEpisodeAIFields(formData: FormData) {
       missingAnalysis ? "analisi tematica ed emotiva" : null
     ].filter(Boolean);
 
-    episodeRedirect(episodeId, "success", `AI completata: ${generatedFields.join(" e ")} generate.`);
+    episodeRedirect(episodeId, "success", `Analisi automatica completata: ${generatedFields.join(" e ")} generate.`);
   } catch (error) {
     episodeRedirect(episodeId, "error", getErrorMessage(error));
   }

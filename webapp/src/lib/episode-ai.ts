@@ -1,3 +1,5 @@
+import { analyzeTranscript } from "@/lib/word-analysis";
+
 type GenerateEpisodeAIInput = {
   serieTitle: string;
   episodeTitle: string | null;
@@ -11,9 +13,32 @@ type GenerateEpisodeAIOptions = {
   includeOnlineContext: boolean;
 };
 
+type LocalSignal = {
+  label: string;
+  terms: string[];
+};
+
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
 const MAX_TRANSCRIPT_CHARS = 65000;
+const OPENAI_PROVIDER = "openai";
+
+const themeSignals: LocalSignal[] = [
+  { label: "relazioni e legami", terms: ["爱", "喜欢", "朋友", "女朋友", "男朋友", "结婚", "家庭", "家人", "关系"] },
+  { label: "conflitto e tensione", terms: ["吵架", "生气", "问题", "麻烦", "误会", "失败", "危险", "压力", "担心"] },
+  { label: "lavoro e vita quotidiana", terms: ["工作", "公司", "老板", "同事", "钱", "房子", "生活", "计划", "事情"] },
+  { label: "indagine e verita", terms: ["案", "案件", "真相", "证据", "警察", "调查", "嫌疑", "尸体", "死亡"] },
+  { label: "cambiamento personale", terms: ["梦想", "决定", "改变", "未来", "成长", "选择", "机会", "希望"] }
+];
+
+const emotionSignals: LocalSignal[] = [
+  { label: "gioia", terms: ["开心", "高兴", "快乐", "笑", "幸福", "喜欢", "好玩"] },
+  { label: "tristezza", terms: ["难过", "伤心", "哭", "痛苦", "失望", "孤独", "可怜"] },
+  { label: "rabbia", terms: ["生气", "愤怒", "讨厌", "烦", "气死", "骂", "吵"] },
+  { label: "paura e ansia", terms: ["害怕", "担心", "紧张", "危险", "怕", "恐怖", "压力"] },
+  { label: "sorpresa", terms: ["惊讶", "突然", "没想到", "奇怪", "真的", "竟然"] },
+  { label: "amore e affetto", terms: ["爱", "喜欢", "亲", "抱", "想你", "心", "温柔"] }
+];
 
 function getOpenAIConfig() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -26,6 +51,10 @@ function getOpenAIConfig() {
     apiKey,
     model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL
   };
+}
+
+function shouldUseOpenAI() {
+  return process.env.EPISODE_AI_PROVIDER === OPENAI_PROVIDER;
 }
 
 function compactTranscript(transcript: string) {
@@ -50,6 +79,119 @@ function episodeContext(input: GenerateEpisodeAIInput) {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function countSignalTerms(transcript: string, signals: LocalSignal[]) {
+  return signals
+    .map((signal) => {
+      const hits = signal.terms.reduce((total, term) => {
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return total + (transcript.match(new RegExp(escaped, "gu"))?.length ?? 0);
+      }, 0);
+
+      return { label: signal.label, hits };
+    })
+    .filter((signal) => signal.hits > 0)
+    .sort((a, b) => b.hits - a.hits || a.label.localeCompare(b.label, "it"))
+    .slice(0, 4);
+}
+
+function splitTranscriptSentences(transcript: string) {
+  return transcript
+    .replace(/\[[^\]]+\]/g, " ")
+    .replace(/\s+/g, " ")
+    .split(/(?<=[。！？!?])|[\r\n]+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 8 && sentence.length <= 180)
+    .filter((sentence, index, sentences) => sentences.indexOf(sentence) === index)
+    .slice(0, 600);
+}
+
+function getSalientSentences(transcript: string, topWords: string[]) {
+  const sentences = splitTranscriptSentences(transcript);
+  const weights = new Map(topWords.map((word, index) => [word, Math.max(1, topWords.length - index)]));
+
+  return sentences
+    .map((sentence, index) => {
+      const score = topWords.reduce((total, word) => {
+        if (!word || !sentence.includes(word)) {
+          return total;
+        }
+
+        return total + (weights.get(word) ?? 1);
+      }, 0);
+
+      return { sentence, index, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, 4)
+    .sort((a, b) => a.index - b.index)
+    .map((item) => item.sentence);
+}
+
+function formatList(items: string[]) {
+  if (items.length === 0) {
+    return "nessun elemento dominante";
+  }
+
+  if (items.length === 1) {
+    return items[0];
+  }
+
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
+
+function formatSignals(signals: { label: string; hits: number }[]) {
+  if (signals.length === 0) {
+    return "non emergono indicatori lessicali dominanti";
+  }
+
+  return signals.map((signal) => `${signal.label} (${signal.hits})`).join(", ");
+}
+
+function getLocalAnalysis(input: GenerateEpisodeAIInput) {
+  const analysis = analyzeTranscript(input.transcript);
+  const topWords = analysis.topParole.slice(0, 10).map((item) => item.parola);
+  const topPhrases = analysis.topCombinazioni.slice(0, 5).map((item) => item.frase.replace(/\s+/g, ""));
+  const salientSentences = getSalientSentences(input.transcript, topWords);
+  const themes = countSignalTerms(input.transcript, themeSignals);
+  const emotions = countSignalTerms(input.transcript, emotionSignals);
+
+  return {
+    analysis,
+    topWords,
+    topPhrases,
+    salientSentences,
+    themes,
+    emotions
+  };
+}
+
+function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
+  const { analysis, topWords, topPhrases, salientSentences } = getLocalAnalysis(input);
+  const episodeLabel = [
+    input.serieTitle,
+    input.season ? `stagione ${input.season}` : null,
+    input.episodeNumber ? `episodio ${input.episodeNumber}` : null
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const phraseText = topPhrases.length > 0 ? ` Le combinazioni ricorrenti piu forti sono: ${formatList(topPhrases)}.` : "";
+  const sentenceText =
+    salientSentences.length > 0
+      ? ` Frasi salienti individuate nella trascrizione: ${salientSentences.map((sentence) => `"${sentence}"`).join(" ")}`
+      : "";
+
+  return `Sintesi automatica gratuita basata solo sulla trascrizione. In ${episodeLabel || "questo episodio"} il contenuto appare concentrato intorno ai nuclei lessicali ${formatList(topWords.slice(0, 7))}. La trascrizione contiene ${analysis.totaleToken} parole significative segmentate e ${analysis.tokenUnici} parole uniche; questo consente di leggere temi, ripetizioni e campi semantici senza usare API esterne.${phraseText}${sentenceText}`;
+}
+
+function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
+  const { analysis, topWords, topPhrases, themes, emotions } = getLocalAnalysis(input);
+  const phraseText = topPhrases.length > 0 ? ` Le co-occorrenze piu ricorrenti sono ${formatList(topPhrases)}.` : "";
+
+  return `Analisi tematica ed emotiva gratuita basata esclusivamente sulla trascrizione. I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Le parole ad alta frequenza (${formatList(topWords.slice(0, 8))}) suggeriscono i principali campi semantici dell'episodio; il dato va letto come supporto analitico quantitativo, non come interpretazione narrativa completa.${phraseText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
 }
 
 function extractOutputText(response: unknown) {
@@ -133,6 +275,10 @@ async function createResponse(prompt: string, options: GenerateEpisodeAIOptions)
 }
 
 export async function generateEpisodeSummary(input: GenerateEpisodeAIInput) {
+  if (!shouldUseOpenAI()) {
+    return generateLocalEpisodeSummary(input);
+  }
+
   const transcript = compactTranscript(input.transcript);
   const prompt = `Sei un'assistente editoriale per una webapp di ricerca su serialita cinese.
 
@@ -158,6 +304,10 @@ ${transcript}`;
 }
 
 export async function generateEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
+  if (!shouldUseOpenAI()) {
+    return generateLocalEpisodeThematicEmotionalAnalysis(input);
+  }
+
   const transcript = compactTranscript(input.transcript);
   const prompt = `Sei un'analista di contenuti televisivi in lingua cinese.
 
