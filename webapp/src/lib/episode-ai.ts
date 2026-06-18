@@ -267,7 +267,7 @@ function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
   const secondaryText =
     secondaryNarratives.length > 0 ? ` In secondo piano emergono anche ${formatList(secondaryNarratives)}.` : "";
   const quote = pickEpisodeQuote(input.transcript, salientSentences);
-  const quoteText = quote ? `\n\nCitazione: “${quote}”` : "";
+  const quoteText = quote ? `\n\n“${quote}”` : "";
 
   return `${mainNarrative}${secondaryText}${quoteText}`;
 }
@@ -381,8 +381,7 @@ Non citare analisi lessicali, parole ricorrenti, frequenze, token, n-grammi o me
 Puoi usare la trascrizione sotto e, se disponibile, il link dell'episodio o informazioni online per contestualizzare meglio nomi, trama e collocazione della puntata.
 Non inventare fatti non supportati. Se il contenuto online non e utile, basati sulla trascrizione.
 Scrivi 1-2 paragrafi chiari, massimo 180 parole.
-Chiudi sempre con una riga finale nel formato:
-Citazione: “breve citazione testuale dalla trascrizione che spiega o rappresenta bene la puntata”
+Chiudi sempre con una riga finale composta solo da una breve citazione testuale dalla trascrizione, tra virgolette, senza etichette introduttive.
 
 ${episodeContext(input)}
 

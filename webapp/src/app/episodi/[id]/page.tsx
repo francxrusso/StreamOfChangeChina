@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Quote, Sparkles } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
@@ -84,6 +84,71 @@ function Notice({ notice }: { notice: EpisodeNotice }) {
     >
       <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
       {notice.message}
+    </div>
+  );
+}
+
+function stripQuoteMarks(value: string) {
+  return value
+    .replace(/^["'“”‘’«»\s]+/u, "")
+    .replace(/["'“”‘’«»\s]+$/u, "")
+    .trim();
+}
+
+function parseEpisodeSummary(value: string) {
+  const lines = value.split(/\r?\n/);
+  let lastContentIndex = -1;
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim().length > 0) {
+      lastContentIndex = index;
+      break;
+    }
+  }
+
+  if (lastContentIndex < 0) {
+    return { body: "", quote: "" };
+  }
+
+  const lastLine = lines[lastContentIndex].trim();
+  const citationMatch = lastLine.match(/^citazione\s*:\s*(.+)$/iu);
+  const quoteOnlyMatch = lastLine.match(/^[“"].+[”"]$/u);
+  const quote = citationMatch ? stripQuoteMarks(citationMatch[1]) : quoteOnlyMatch ? stripQuoteMarks(lastLine) : "";
+
+  if (!quote) {
+    return { body: value.trim(), quote: "" };
+  }
+
+  const body = [...lines.slice(0, lastContentIndex), ...lines.slice(lastContentIndex + 1)].join("\n").trim();
+
+  return { body, quote };
+}
+
+function SummaryContent({ value }: { value: string }) {
+  const { body, quote } = parseEpisodeSummary(value);
+  const paragraphs = body
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="mt-3 grid gap-4">
+      {paragraphs.length > 0 ? (
+        paragraphs.map((paragraph, index) => (
+          <p key={`${index}-${paragraph.slice(0, 24)}`} className="leading-7 text-stone-700">
+            {paragraph}
+          </p>
+        ))
+      ) : quote ? null : (
+        <p className="leading-7 text-stone-700">{value}</p>
+      )}
+
+      {quote ? (
+        <figure className="border-l-4 border-cinnabar bg-red-50/60 px-5 py-4">
+          <Quote size={18} className="text-cinnabar" aria-hidden="true" />
+          <blockquote className="mt-2 text-base leading-8 text-ink">{quote}</blockquote>
+        </figure>
+      ) : null}
     </div>
   );
 }
@@ -346,7 +411,7 @@ export default async function EpisodePage({
       {episodio.sintesi_automatica ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-ink">Sintesi</h2>
-          <p className="mt-3 leading-7 text-stone-700">{episodio.sintesi_automatica}</p>
+          <SummaryContent value={episodio.sintesi_automatica} />
         </section>
       ) : null}
 
