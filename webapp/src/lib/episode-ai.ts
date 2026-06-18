@@ -170,6 +170,23 @@ function getSalientSentences(transcript: string, topWords: string[]) {
     .map((item) => item.sentence);
 }
 
+function cleanQuote(sentence: string) {
+  return sentence
+    .replace(/^[-–—\s]+/u, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 140);
+}
+
+function pickEpisodeQuote(transcript: string, salientSentences: string[]) {
+  const quote =
+    salientSentences.find((sentence) => sentence.length >= 10 && sentence.length <= 140) ??
+    splitTranscriptSentences(transcript).find((sentence) => sentence.length >= 10 && sentence.length <= 140) ??
+    "";
+
+  return cleanQuote(quote);
+}
+
 function formatList(items: string[]) {
   if (items.length === 0) {
     return "nessun elemento dominante";
@@ -242,25 +259,17 @@ function getLocalAnalysis(input: GenerateEpisodeAIInput) {
 }
 
 function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
-  const { analysis, topWords, topPhrases, salientSentences, narratives } = getLocalAnalysis(input);
+  const { salientSentences, narratives } = getLocalAnalysis(input);
   const mainNarrative =
     narratives[0]?.sentence ??
     "La puntata ruota attorno agli snodi principali emersi nella trascrizione, mettendo in relazione azioni, decisioni e reazioni dei personaggi.";
   const secondaryNarratives = narratives.slice(1, 3).map((signal) => signal.label);
   const secondaryText =
     secondaryNarratives.length > 0 ? ` In secondo piano emergono anche ${formatList(secondaryNarratives)}.` : "";
-  const idiomText =
-    analysis.modiDiDire.length > 0
-      ? ` Le formule ricorrenti piu riconoscibili sono ${formatList(analysis.modiDiDire.slice(0, 4).map((phrase) => phrase.frase.replace(/\s+/g, "")))}.`
-      : topPhrases.length > 0
-        ? ` Ricorrono inoltre combinazioni come ${formatList(topPhrases)}.`
-        : "";
-  const sentenceText =
-    salientSentences.length > 0
-      ? ` I passaggi piu rappresentativi della trascrizione insistono su: ${salientSentences.slice(0, 2).map((sentence) => `"${sentence}"`).join(" ")}`
-      : "";
+  const quote = pickEpisodeQuote(input.transcript, salientSentences);
+  const quoteText = quote ? `\n\nCitazione: “${quote}”` : "";
 
-  return `${mainNarrative}${secondaryText} La lettura dell'argomento e sostenuta da nuclei lessicali specifici come ${formatList(topWords.slice(0, 6))}.${idiomText}${sentenceText}`;
+  return `${mainNarrative}${secondaryText}${quoteText}`;
 }
 
 function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
@@ -367,9 +376,13 @@ export async function generateEpisodeSummary(input: GenerateEpisodeAIInput) {
   const prompt = `Sei un'assistente editoriale per una webapp di ricerca su serialita cinese.
 
 Genera una SINTESI dell'episodio in italiano.
+La sintesi deve concentrarsi esclusivamente sul contenuto della puntata: cosa succede, quali eventi o conflitti emergono, quali snodi narrativi si sviluppano.
+Non citare analisi lessicali, parole ricorrenti, frequenze, token, n-grammi o metodologia di analisi.
 Puoi usare la trascrizione sotto e, se disponibile, il link dell'episodio o informazioni online per contestualizzare meglio nomi, trama e collocazione della puntata.
 Non inventare fatti non supportati. Se il contenuto online non e utile, basati sulla trascrizione.
 Scrivi 1-2 paragrafi chiari, massimo 180 parole.
+Chiudi sempre con una riga finale nel formato:
+Citazione: “breve citazione testuale dalla trascrizione che spiega o rappresenta bene la puntata”
 
 ${episodeContext(input)}
 
