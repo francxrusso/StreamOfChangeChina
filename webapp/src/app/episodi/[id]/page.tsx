@@ -40,6 +40,23 @@ type EpisodeNotice = {
   message: string;
 };
 
+type EpisodeDialogueLine = {
+  id: string;
+  ordine: number;
+  parlante_label: string;
+  testo_originale: string;
+  personaggi:
+    | {
+    nome_originale: string;
+    nome_italiano: string | null;
+      }
+    | {
+        nome_originale: string;
+        nome_italiano: string | null;
+      }[]
+    | null;
+};
+
 type QuickLessicoOption = {
   id: string;
   label: string;
@@ -252,6 +269,33 @@ async function getQuickLessicoOptions(serieId: string): Promise<QuickLessicoOpti
   };
 }
 
+async function getEpisodeDialogueLines(episodeId: string) {
+  const supabase = createServerSupabaseClient();
+
+  if (!hasServerSupabaseConfig() || !supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("episodio_battute")
+    .select("id, ordine, parlante_label, testo_originale, personaggi(nome_originale, nome_italiano)")
+    .eq("episodio_id", episodeId)
+    .order("ordine", { ascending: true });
+
+  if (error) {
+    return [];
+  }
+
+  return ((data ?? []) as EpisodeDialogueLine[]).map((line) => {
+    const personaggio = Array.isArray(line.personaggi) ? line.personaggi[0] : line.personaggi;
+
+    return {
+      speaker: personaggio?.nome_originale ?? line.parlante_label,
+      text: line.testo_originale
+    };
+  });
+}
+
 export default async function EpisodePage({
   params,
   searchParams
@@ -298,6 +342,7 @@ export default async function EpisodePage({
   const quickLessicoOptions = session?.canEdit
     ? await getQuickLessicoOptions(episodio.serie_id)
     : emptyQuickLessicoOptions;
+  const dialogueSegments = await getEpisodeDialogueLines(episodio.id);
 
   return (
     <section className="grid gap-8">
@@ -434,8 +479,8 @@ export default async function EpisodePage({
             />
           ) : null}
         </div>
-        {episodio.trascrizione ? (
-          <TranscriptViewer text={episodio.trascrizione} />
+        {episodio.trascrizione || dialogueSegments.length > 0 ? (
+          <TranscriptViewer text={episodio.trascrizione ?? ""} segments={dialogueSegments} />
         ) : (
           <p className="mt-5 border-t border-stone-100 pt-5 text-sm text-stone-600">
             Trascrizione non disponibile per questo episodio.

@@ -348,13 +348,14 @@ function AdminNoticeBanner({ notice }: { notice: AdminNotice | null }) {
 
 async function getRelationOptions(): Promise<RelationOptions> {
   const supabase = createSupabaseAdminClient();
-  const [serie, episodi, personaggi, emozioni, frasi, danmu] = await Promise.all([
+  const [serie, episodi, personaggi, emozioni, frasi, danmu, battute] = await Promise.all([
     supabase.from("serie_tv").select("id, titolo_originale").order("titolo_originale"),
     supabase.from("episodi").select("id, serie_id, stagione, numero_episodio, titolo_originale").order("created_at", { ascending: false }).limit(500),
     supabase.from("personaggi").select("id, nome_originale").order("nome_originale").limit(500),
     supabase.from("emozioni").select("id, nome").order("nome"),
     supabase.from("frasi_parole").select("id, frase_originale").order("created_at", { ascending: false }).limit(500),
-    supabase.from("danmu").select("id, testo_originale").order("created_at", { ascending: false }).limit(500)
+    supabase.from("danmu").select("id, testo_originale").order("created_at", { ascending: false }).limit(500),
+    supabase.from("episodio_battute").select("id, parlante_label, testo_originale").order("created_at", { ascending: false }).limit(500)
   ]);
 
   return {
@@ -366,7 +367,11 @@ async function getRelationOptions(): Promise<RelationOptions> {
     personaggi: (personaggi.data ?? []).map((row) => ({ id: row.id, label: row.nome_originale })),
     emozioni: (emozioni.data ?? []).map((row) => ({ id: row.id, label: row.nome })),
     frasi: (frasi.data ?? []).map((row) => ({ id: row.id, label: asDisplayValue(row.frase_originale) })),
-    danmu: (danmu.data ?? []).map((row) => ({ id: row.id, label: asDisplayValue(row.testo_originale) }))
+    danmu: (danmu.data ?? []).map((row) => ({ id: row.id, label: asDisplayValue(row.testo_originale) })),
+    battute: (battute.data ?? []).map((row) => ({
+      id: row.id,
+      label: `${row.parlante_label}: ${asDisplayValue(row.testo_originale)}`
+    }))
   };
 }
 

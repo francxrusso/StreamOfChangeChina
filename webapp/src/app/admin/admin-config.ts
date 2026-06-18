@@ -14,7 +14,7 @@ export type AdminField = {
   type: AdminFieldType;
   required?: boolean;
   options?: string[];
-  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmu";
+  relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmu" | "battute";
 };
 
 export type AdminResource = {
@@ -175,6 +175,30 @@ export const adminResources = [
       { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true },
       { name: "import_batch_id", label: "Import batch ID", type: "uuid" },
       { name: "source_row_number", label: "Numero riga origine", type: "number" }
+    ]
+  },
+  {
+    key: "battute",
+    label: "Battute episodio",
+    table: "episodio_battute",
+    primaryKey: ["id"],
+    orderBy: "ordine",
+    summaryFields: ["parlante_label", "testo_originale", "episodio_id", "verifica_stato"],
+    searchFields: ["parlante_label", "testo_originale", "fonte", "verifica_stato", "note_admin"],
+    fields: [
+      { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
+      { name: "episodio_id", label: "Episodio", type: "uuid", relation: "episodi", required: true },
+      { name: "ordine", label: "Ordine", type: "number", required: true },
+      { name: "personaggio_id", label: "Personaggio verificato", type: "uuid", relation: "personaggi" },
+      { name: "parlante_label", label: "Parlante", type: "text", required: true },
+      { name: "testo_originale", label: "Battuta originale", type: "textarea", required: true },
+      { name: "timecode_inizio_secondi", label: "Timecode inizio", type: "decimal" },
+      { name: "timecode_fine_secondi", label: "Timecode fine", type: "decimal" },
+      { name: "fonte", label: "Fonte", type: "select", options: ["trascrizione_marcata", "video", "manuale"], required: true },
+      { name: "confidenza", label: "Confidenza", type: "decimal" },
+      { name: "verifica_stato", label: "Stato verifica", type: "select", options: ["verificata", "da_verificare", "incerta"], required: true },
+      { name: "note_admin", label: "Note admin", type: "textarea" },
+      { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true }
     ]
   },
   {
