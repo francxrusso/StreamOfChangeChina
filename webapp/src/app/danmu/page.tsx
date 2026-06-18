@@ -1,7 +1,7 @@
 import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { type PublicDanmu, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { DeleteDanmuButton } from "./delete-danmu-button";
 
 export const dynamic = "force-dynamic";
 
@@ -302,7 +302,19 @@ export default async function DanmuPage({
                   ) : null}
                 </div>
                 {session?.canEdit ? (
-                  <DeleteDanmuButton id={item.id} label={item.testo_originale} returnTo={returnTo} />
+                  <QuickAdminActions
+                    resource="danmu"
+                    id={item.id}
+                    title={item.testo_originale}
+                    returnTo={returnTo}
+                    fields={[
+                      { name: "testo_originale", label: "Testo originale", type: "textarea", value: item.testo_originale },
+                      { name: "testo_pinyin", label: "Pinyin", type: "textarea", value: item.testo_pinyin },
+                      { name: "traduzione_italiana", label: "Traduzione italiana", type: "textarea", value: item.traduzione_italiana },
+                      { name: "sentiment", label: "Sentiment", value: item.sentiment },
+                      { name: "nota_analisi", label: "Nota analisi", type: "textarea", value: item.nota_analisi }
+                    ]}
+                  />
                 ) : null}
               </div>
               <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{item.testo_originale}</h2>

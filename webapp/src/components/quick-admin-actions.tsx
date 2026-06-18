@@ -1,0 +1,164 @@
+"use client";
+
+import { useState } from "react";
+import { Pencil, Trash2, X } from "lucide-react";
+import { deleteQuickAdminRecord, updateQuickAdminRecord } from "@/app/quick-admin-actions";
+
+export type QuickAdminField = {
+  name: string;
+  label: string;
+  type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox";
+  value?: string | number | boolean | null;
+  options?: Array<{ value: string; label: string }>;
+};
+
+type QuickAdminActionsProps = {
+  resource: string;
+  id: string;
+  title: string;
+  returnTo: string;
+  deleteReturnTo?: string;
+  fields: QuickAdminField[];
+  align?: "start" | "end";
+};
+
+function fieldValue(value: QuickAdminField["value"]) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value);
+}
+
+export function QuickAdminActions({ resource, id, title, returnTo, deleteReturnTo, fields, align = "end" }: QuickAdminActionsProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className={`flex flex-wrap gap-2 ${align === "end" ? "justify-end" : ""}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="inline-flex items-center justify-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-ink hover:border-cinnabar hover:text-cinnabar"
+      >
+        <Pencil size={15} aria-hidden="true" />
+        Modifica
+      </button>
+
+      <form
+        action={deleteQuickAdminRecord}
+        onSubmit={(event) => {
+          const confirmed = window.confirm(`Vuoi eliminare questo elemento?\n\n${title}`);
+
+          if (!confirmed) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="resource" value={resource} />
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          <Trash2 size={15} aria-hidden="true" />
+          Elimina
+        </button>
+      </form>
+
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 px-4 py-6">
+          <div
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-md border border-stone-200 bg-white p-5 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`quick-edit-${resource}-${id}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id={`quick-edit-${resource}-${id}`} className="text-lg font-semibold text-ink">
+                  Modifica
+                </h2>
+                <p className="mt-1 text-sm text-stone-600">{title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="rounded-md p-2 text-stone-500 hover:bg-stone-100 hover:text-ink"
+                aria-label="Chiudi"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+
+            <form action={updateQuickAdminRecord} className="mt-5 grid gap-4">
+              <input type="hidden" name="resource" value={resource} />
+              <input type="hidden" name="id" value={id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+
+              {fields.map((field) => (
+                <label key={field.name} className="grid gap-1 text-sm">
+                  <span className="font-medium text-ink">{field.label}</span>
+                  {field.type === "textarea" ? (
+                    <textarea
+                      name={field.name}
+                      defaultValue={fieldValue(field.value)}
+                      rows={field.name === "trascrizione" ? 8 : 4}
+                      className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+                    />
+                  ) : field.type === "select" ? (
+                    <select
+                      name={field.name}
+                      defaultValue={fieldValue(field.value)}
+                      className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+                    >
+                      {field.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.type === "checkbox" ? (
+                    <input
+                      type="hidden"
+                      name={field.name}
+                      value={field.value ? "false" : "true"}
+                    />
+                  ) : (
+                    <input
+                      name={field.name}
+                      type={field.type ?? "text"}
+                      defaultValue={fieldValue(field.value)}
+                      className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+                    />
+                  )}
+                  {field.type === "checkbox" ? (
+                    <span className="text-xs text-stone-500">
+                      Valore attuale: {field.value ? "attivo" : "non attivo"}. Salvando verrà invertito.
+                    </span>
+                  ) : null}
+                </label>
+              ))}
+
+              <div className="flex flex-wrap justify-end gap-3 border-t border-stone-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-ink hover:border-cinnabar hover:text-cinnabar"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                >
+                  Salva modifiche
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

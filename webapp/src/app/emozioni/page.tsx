@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { type PublicDanmu, type PublicEmozione, type PublicFraseParola } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
@@ -9,8 +11,42 @@ type EmozioneWithCounts = PublicEmozione & {
   danmu_count: number;
 };
 
+type NoticeData = {
+  status: "success" | "error";
+  message: string;
+};
+
 function getValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): NoticeData | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: NoticeData }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
 }
 
 function countByEmotion<T extends { emozioni: string[] | null; emozione_principale?: string | null }>(items: T[] | null) {
@@ -138,7 +174,10 @@ export default async function EmozioniPage({
   const filters = {
     q: getValue(params.q)
   };
+  const notice = getNotice(params);
+  const session = await getAdminSession();
   const { emozioni, error } = await getEmozioni(filters);
+  const returnTo = `/emozioni${filters.q ? `?q=${encodeURIComponent(filters.q)}` : ""}`;
 
   return (
     <section className="grid gap-6">
@@ -169,6 +208,8 @@ export default async function EmozioniPage({
         </div>
       </form>
 
+      {notice ? <Notice notice={notice} /> : null}
+
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           Impossibile caricare le emozioni: {error}
@@ -185,27 +226,56 @@ export default async function EmozioniPage({
         <div className="grid gap-4 md:grid-cols-2">
           {(emozioni as EmozioneWithCounts[]).map((emozione) => (
             <article key={emozione.id} className="rounded-md border border-stone-200 bg-white p-5">
-              <div className="flex items-start gap-4">
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-stone-200 text-xl"
-                  style={{
-                    backgroundColor: emozione.colore_hex ? `${emozione.colore_hex}18` : undefined,
-                    color: emozione.colore_hex ?? undefined
-                  }}
-                  aria-hidden="true"
-                >
-                  {emozione.icona ?? emozione.nome.slice(0, 1)}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-ink">{emozione.nome}</h2>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-stone-600">
-                    {emozione.colore_assoc ? (
-                      <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.colore_assoc}</span>
-                    ) : null}
-                    <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.frasi_count} frasi</span>
-                    <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.danmu_count} Danmu</span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 gap-4">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-stone-200 text-xl"
+                    style={{
+                      backgroundColor: emozione.colore_hex ? `${emozione.colore_hex}18` : undefined,
+                      color: emozione.colore_hex ?? undefined
+                    }}
+                    aria-hidden="true"
+                  >
+                    {emozione.icona ?? emozione.nome.slice(0, 1)}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-ink">{emozione.nome}</h2>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-stone-600">
+                      {emozione.colore_assoc ? (
+                        <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.colore_assoc}</span>
+                      ) : null}
+                      <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.frasi_count} frasi</span>
+                      <span className="rounded-sm bg-stone-100 px-2 py-1">{emozione.danmu_count} Danmu</span>
+                    </div>
                   </div>
                 </div>
+                {session?.canEdit && !emozione.id.startsWith("public-") ? (
+                  <QuickAdminActions
+                    resource="emozioni"
+                    id={emozione.id}
+                    title={emozione.nome}
+                    returnTo={returnTo}
+                    fields={[
+                      { name: "nome", label: "Nome", value: emozione.nome },
+                      { name: "descrizione", label: "Descrizione", type: "textarea", value: emozione.descrizione },
+                      { name: "colore_assoc", label: "Colore associato", value: emozione.colore_assoc },
+                      { name: "colore_hex", label: "Colore hex", value: emozione.colore_hex },
+                      { name: "icona", label: "Icona", value: emozione.icona },
+                      {
+                        name: "sintesi_frasi_collegate_ai",
+                        label: "Sintesi frasi collegate",
+                        type: "textarea",
+                        value: emozione.sintesi_frasi_collegate_ai
+                      },
+                      {
+                        name: "analisi_semantica_frasi_ai",
+                        label: "Analisi semantica",
+                        type: "textarea",
+                        value: emozione.analisi_semantica_frasi_ai
+                      }
+                    ]}
+                  />
+                ) : null}
               </div>
 
               {emozione.descrizione ? (

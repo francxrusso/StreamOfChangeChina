@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, FileText, Layers3 } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import {
   CreateAnalysisModal,
@@ -173,30 +174,51 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
       {analyses.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {analyses.map((analysis) => (
-            <Link
-              key={analysis.id}
-              href={`/analisi/${analysis.id}`}
-              className="rounded-md border border-stone-200 bg-white p-5 transition hover:border-cinnabar hover:shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-stone-100 text-cinnabar">
-                  {analysis.output_grafici ? <BarChart3 size={20} aria-hidden="true" /> : <FileText size={20} aria-hidden="true" />}
-                </span>
-                <span className="text-right text-xs text-stone-500">{formatDate(analysis.created_at)}</span>
-              </div>
-              <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{analysis.titolo}</h2>
-              <p className="mt-2 text-sm text-stone-600">{analysis.serie_tv?.genere ?? "Genere non impostato"}</p>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{scopeLabel(analysis)}</span>
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_episodi} episodi</span>
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_token} token</span>
-                <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.token_unici} unici</span>
-              </div>
-              <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cinnabar">
-                <Layers3 size={15} aria-hidden="true" />
-                Apri dettaglio
-              </div>
-            </Link>
+            <article key={analysis.id} className="rounded-md border border-stone-200 bg-white p-5 transition hover:border-cinnabar hover:shadow-sm">
+              <Link href={`/analisi/${analysis.id}`} className="block">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-stone-100 text-cinnabar">
+                    {analysis.output_grafici ? <BarChart3 size={20} aria-hidden="true" /> : <FileText size={20} aria-hidden="true" />}
+                  </span>
+                  <span className="text-right text-xs text-stone-500">{formatDate(analysis.created_at)}</span>
+                </div>
+                <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{analysis.titolo}</h2>
+                <p className="mt-2 text-sm text-stone-600">{analysis.serie_tv?.genere ?? "Genere non impostato"}</p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{scopeLabel(analysis)}</span>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_episodi} episodi</span>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_token} token</span>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.token_unici} unici</span>
+                </div>
+                <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cinnabar">
+                  <Layers3 size={15} aria-hidden="true" />
+                  Apri dettaglio
+                </div>
+              </Link>
+              {session?.canEdit ? (
+                <div className="mt-5 border-t border-stone-100 pt-4">
+                  <QuickAdminActions
+                    resource="analisi"
+                    id={analysis.id}
+                    title={analysis.titolo}
+                    returnTo="/analisi"
+                    fields={[
+                      { name: "titolo", label: "Titolo", value: analysis.titolo },
+                      {
+                        name: "output_grafici",
+                        label: "Grafici",
+                        type: "select",
+                        value: String(analysis.output_grafici),
+                        options: [
+                          { value: "true", label: "Con grafici" },
+                          { value: "false", label: "Senza grafici" }
+                        ]
+                      }
+                    ]}
+                  />
+                </div>
+              ) : null}
+            </article>
           ))}
         </div>
       ) : null}

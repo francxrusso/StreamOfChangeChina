@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { TranscriptViewer } from "@/components/transcript-viewer";
 import { generateEpisodeAIFields } from "./actions";
@@ -248,6 +249,28 @@ export default async function EpisodePage({
           <span>Episodio {episodio.numero_episodio ?? "-"}</span>
           {episodio.messa_in_onda ? <span>{episodio.messa_in_onda}</span> : null}
         </div>
+        {session?.canEdit ? (
+          <div className="mt-5">
+            <QuickAdminActions
+              resource="episodi"
+              id={episodio.id}
+              title={episodio.titolo_originale ?? "Episodio"}
+              returnTo={`/episodi/${episodio.id}`}
+              deleteReturnTo={`/serie/${episodio.serie_id}`}
+              align="start"
+              fields={[
+                { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
+                { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
+                { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
+                { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
+                { name: "sintesi_automatica", label: "Sintesi", type: "textarea", value: episodio.sintesi_automatica },
+                { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva", type: "textarea", value: episodio.analisi_tematica_emotiva },
+                { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
+              ]}
+            />
+          </div>
+        ) : null}
         {episodio.link_episodio ? (
           <a
             href={episodio.link_episodio}

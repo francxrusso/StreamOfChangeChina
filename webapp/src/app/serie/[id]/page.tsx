@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import {
   type PublicEpisodio,
   type PublicPersonaggio,
@@ -63,6 +65,44 @@ function groupEpisodesBySeason(episodes: PublicEpisodio[]) {
 
 function AccordionChevron() {
   return <ChevronDown size={18} aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180" />;
+}
+
+type NoticeData = {
+  status: "success" | "error";
+  message: string;
+};
+
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): NoticeData | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: NoticeData }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
 }
 
 async function getSerieDetail(id: string) {
@@ -130,11 +170,16 @@ async function getSerieDetail(id: string) {
 }
 
 export default async function SerieDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const notice = getNotice(query);
+  const session = await getAdminSession();
   const { serie, episodi, personaggi, error } = await getSerieDetail(id);
   const episodeGroups = groupEpisodesBySeason(episodi);
   const hasMultipleSeasons = episodeGroups.length > 1;
@@ -167,6 +212,8 @@ export default async function SerieDetailPage({
 
   return (
     <section className="grid gap-8">
+      {notice ? <Notice notice={notice} /> : null}
+
       <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:items-start">
         <SeriePoster serie={serie} />
         <div>
@@ -176,6 +223,29 @@ export default async function SerieDetailPage({
           <h1 className="mt-4 text-3xl font-semibold text-ink">{serie.titolo_originale}</h1>
           {serie.titolo_inglese ? <p className="mt-2 text-stone-600">{serie.titolo_inglese}</p> : null}
           {serie.descrizione ? <p className="mt-5 max-w-3xl leading-7 text-stone-700">{serie.descrizione}</p> : null}
+          {session?.canEdit ? (
+            <div className="mt-5">
+              <QuickAdminActions
+                resource="serie"
+                id={serie.id}
+                title={serie.titolo_originale}
+                returnTo={`/serie/${serie.id}`}
+                deleteReturnTo="/serie"
+                align="start"
+                fields={[
+                  { name: "titolo_originale", label: "Titolo originale", value: serie.titolo_originale },
+                  { name: "titolo_pinyin", label: "Titolo pinyin", value: serie.titolo_pinyin },
+                  { name: "titolo_inglese", label: "Titolo inglese", value: serie.titolo_inglese },
+                  { name: "anno", label: "Anno", type: "number", value: serie.anno },
+                  { name: "stagioni", label: "Stagioni", type: "number", value: serie.stagioni },
+                  { name: "genere", label: "Genere", value: serie.genere },
+                  { name: "piattaforma", label: "Piattaforma", value: serie.piattaforma },
+                  { name: "poster_url", label: "Poster URL", value: serie.poster_url },
+                  { name: "descrizione", label: "Descrizione", type: "textarea", value: serie.descrizione }
+                ]}
+              />
+            </div>
+          ) : null}
           <dl className="mt-6 grid gap-4 text-sm text-stone-700 sm:grid-cols-2 lg:grid-cols-4">
             {serie.anno ? (
               <div>
@@ -217,7 +287,8 @@ export default async function SerieDetailPage({
           <div className="grid gap-3 border-t border-stone-200 p-4 md:grid-cols-2">
             {personaggi.map((personaggio) => (
               <article key={personaggio.id} className="grid gap-3 rounded-md border border-stone-200 p-3">
-                <div className="flex gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-3">
                   <CharacterImage personaggio={personaggio} />
                   <div className="min-w-0">
                     <h3 className="font-semibold text-ink">{personaggio.nome_originale}</h3>
@@ -230,6 +301,25 @@ export default async function SerieDetailPage({
                       {personaggio.lavoro ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.lavoro}</span> : null}
                     </div>
                   </div>
+                  </div>
+                  {session?.canEdit ? (
+                    <QuickAdminActions
+                      resource="personaggi"
+                      id={personaggio.id}
+                      title={personaggio.nome_originale}
+                      returnTo={`/serie/${serie.id}`}
+                      fields={[
+                        { name: "nome_originale", label: "Nome originale", value: personaggio.nome_originale },
+                        { name: "nome_pinyin", label: "Nome pinyin", value: personaggio.nome_pinyin },
+                        { name: "nome_italiano", label: "Nome italiano", value: personaggio.nome_italiano },
+                        { name: "genere", label: "Genere", value: personaggio.genere },
+                        { name: "fascia_eta", label: "Fascia eta", value: personaggio.fascia_eta },
+                        { name: "lavoro", label: "Lavoro", value: personaggio.lavoro },
+                        { name: "immagine_rappresentativa", label: "Immagine", value: personaggio.immagine_rappresentativa },
+                        { name: "descrizione", label: "Descrizione", type: "textarea", value: personaggio.descrizione }
+                      ]}
+                    />
+                  ) : null}
                 </div>
                 {personaggio.descrizione ? (
                   <p className="text-sm leading-6 text-stone-700">{personaggio.descrizione}</p>
@@ -269,11 +359,11 @@ export default async function SerieDetailPage({
                     <AccordionChevron />
                   </span>
                 </summary>
-                <EpisodeList episodes={seasonEpisodes} showSeason={false} />
+                <EpisodeList episodes={seasonEpisodes} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} />
               </details>
             ))
           ) : (
-            <EpisodeList episodes={episodi} showSeason={false} />
+            <EpisodeList episodes={episodi} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} />
           )}
         </div>
       </details>
@@ -281,11 +371,21 @@ export default async function SerieDetailPage({
   );
 }
 
-function EpisodeList({ episodes, showSeason }: { episodes: PublicEpisodio[]; showSeason: boolean }) {
+function EpisodeList({
+  episodes,
+  showSeason,
+  returnTo,
+  canEdit
+}: {
+  episodes: PublicEpisodio[];
+  showSeason: boolean;
+  returnTo: string;
+  canEdit: boolean;
+}) {
   return (
     <div className="divide-y divide-stone-200 border-t border-stone-200">
       {episodes.map((episodio) => (
-        <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto] md:items-center">
+        <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto_auto] md:items-center">
           <div className="flex flex-wrap gap-2 text-xs text-stone-600">
             {showSeason ? <span className="rounded-sm bg-stone-100 px-2 py-1">S{episodio.stagione ?? "-"}</span> : null}
             <span className="rounded-sm bg-stone-100 px-2 py-1">E{episodio.numero_episodio ?? "-"}</span>
@@ -294,6 +394,23 @@ function EpisodeList({ episodes, showSeason }: { episodes: PublicEpisodio[]; sho
             {episodio.titolo_originale ?? "Senza titolo"}
           </Link>
           <span className="text-stone-600">{episodio.messa_in_onda ?? ""}</span>
+          {canEdit ? (
+            <QuickAdminActions
+              resource="episodi"
+              id={episodio.id}
+              title={episodio.titolo_originale ?? "Episodio"}
+              returnTo={returnTo}
+              fields={[
+                { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
+                { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
+                { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
+                { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
+                { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
+                { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
+              ]}
+            />
+          ) : null}
         </article>
       ))}
     </div>

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { BarChart3, FileText } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { type CharacterLexicalStat, type PhraseStat, type WordStat } from "@/lib/word-analysis";
-import { DeleteAnalysisButton } from "./delete-analysis-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,44 @@ type AnalysisRunDetail = {
     genere: string | null;
   } | null;
 };
+
+type NoticeData = {
+  status: "success" | "error";
+  message: string;
+};
+
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): NoticeData | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: NoticeData }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("it-IT", {
@@ -117,8 +155,16 @@ async function getAnalysis(id: string) {
   return { analysis: data as unknown as AnalysisRunDetail | null, error: null };
 }
 
-export default async function AnalysisDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AnalysisDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
+  const notice = getNotice(query);
   const session = await getAdminSession();
   const { analysis, error } = await getAnalysis(id);
 
@@ -150,6 +196,8 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
 
   return (
     <section className="grid gap-8">
+      {notice ? <Notice notice={notice} /> : null}
+
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
         <div>
           <Link href="/analisi" className="text-sm font-medium text-cinnabar hover:text-ink">
@@ -165,7 +213,29 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
             <span className="rounded-sm bg-stone-100 px-2 py-1">{formatDate(analysis.created_at)}</span>
           </div>
         </div>
-        {session?.canEdit ? <DeleteAnalysisButton id={analysis.id} title={analysis.titolo} /> : null}
+        {session?.canEdit ? (
+          <QuickAdminActions
+            resource="analisi"
+            id={analysis.id}
+            title={analysis.titolo}
+            returnTo={`/analisi/${analysis.id}`}
+            deleteReturnTo="/analisi"
+            fields={[
+              { name: "titolo", label: "Titolo", value: analysis.titolo },
+              { name: "note_ai", label: "Note", type: "textarea", value: analysis.note_ai },
+              {
+                name: "output_grafici",
+                label: "Grafici",
+                type: "select",
+                value: String(analysis.output_grafici),
+                options: [
+                  { value: "true", label: "Con grafici" },
+                  { value: "false", label: "Senza grafici" }
+                ]
+              }
+            ]}
+          />
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

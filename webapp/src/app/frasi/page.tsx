@@ -1,7 +1,7 @@
 import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { type PublicFraseParola, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { DeleteLessicoButton } from "./delete-lessico-button";
 
 export const dynamic = "force-dynamic";
 
@@ -309,7 +309,30 @@ export default async function FrasiPage({
                   {frase.tipo ? <span className="rounded-sm bg-stone-100 px-2 py-1">{frase.tipo}</span> : null}
                 </div>
                 {session?.canEdit ? (
-                  <DeleteLessicoButton id={frase.id} label={frase.frase_originale} returnTo={returnTo} />
+                  <QuickAdminActions
+                    resource="frasi"
+                    id={frase.id}
+                    title={frase.frase_originale}
+                    returnTo={returnTo}
+                    fields={[
+                      {
+                        name: "tipo",
+                        label: "Tipo",
+                        type: "select",
+                        value: frase.tipo,
+                        options: [
+                          { value: "Frase", label: "Frase" },
+                          { value: "Parola", label: "Parola" },
+                          { value: "Espressione", label: "Espressione" }
+                        ]
+                      },
+                      { name: "frase_originale", label: "Frase originale", type: "textarea", value: frase.frase_originale },
+                      { name: "frase_pinyin", label: "Pinyin", type: "textarea", value: frase.frase_pinyin },
+                      { name: "traduzione_italiana", label: "Traduzione italiana", type: "textarea", value: frase.traduzione_italiana },
+                      { name: "parola_chiave", label: "Parola chiave", value: frase.parola_chiave },
+                      { name: "nota_analisi", label: "Nota analisi", type: "textarea", value: frase.nota_analisi }
+                    ]}
+                  />
                 ) : null}
               </div>
               <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{frase.frase_originale}</h2>

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getAdminSession } from "@/app/access-actions";
+import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
@@ -7,6 +9,44 @@ export const dynamic = "force-dynamic";
 type SerieWithCount = PublicSerie & {
   episodi_count: number;
 };
+
+type NoticeData = {
+  status: "success" | "error";
+  message: string;
+};
+
+function getValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function getNotice(params: Record<string, string | string[] | undefined>): NoticeData | null {
+  const status = getValue(params.status);
+  const message = getValue(params.message);
+
+  if ((status !== "success" && status !== "error") || !message) {
+    return null;
+  }
+
+  return { status, message };
+}
+
+function Notice({ notice }: { notice: NoticeData }) {
+  const isSuccess = notice.status === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-4 text-sm ${
+        isSuccess
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900"
+      }`}
+      role={isSuccess ? "status" : "alert"}
+    >
+      <span className="font-semibold">{isSuccess ? "Operazione completata." : "Operazione non riuscita."}</span>{" "}
+      {notice.message}
+    </div>
+  );
+}
 
 function SeriePoster({ serie }: { serie: PublicSerie }) {
   if (!serie.poster_url) {
@@ -76,7 +116,14 @@ async function getSerie() {
   }
 }
 
-export default async function SeriePage() {
+export default async function SeriePage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const session = await getAdminSession();
+  const notice = getNotice(params);
   const { serie, error } = await getSerie();
 
   return (
@@ -91,6 +138,8 @@ export default async function SeriePage() {
           Impossibile caricare le serie: {error}
         </div>
       ) : null}
+
+      {notice ? <Notice notice={notice} /> : null}
 
       {!error && serie.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
@@ -158,6 +207,27 @@ export default async function SeriePage() {
                 >
                   Apri episodi
                 </Link>
+                {session?.canEdit ? (
+                  <div className="mt-5 border-t border-stone-100 pt-4">
+                    <QuickAdminActions
+                      resource="serie"
+                      id={item.id}
+                      title={item.titolo_originale}
+                      returnTo="/serie"
+                      fields={[
+                        { name: "titolo_originale", label: "Titolo originale", value: item.titolo_originale },
+                        { name: "titolo_pinyin", label: "Titolo pinyin", value: item.titolo_pinyin },
+                        { name: "titolo_inglese", label: "Titolo inglese", value: item.titolo_inglese },
+                        { name: "anno", label: "Anno", type: "number", value: item.anno },
+                        { name: "stagioni", label: "Stagioni", type: "number", value: item.stagioni },
+                        { name: "genere", label: "Genere", value: item.genere },
+                        { name: "piattaforma", label: "Piattaforma", value: item.piattaforma },
+                        { name: "poster_url", label: "Poster URL", value: item.poster_url },
+                        { name: "descrizione", label: "Descrizione", type: "textarea", value: item.descrizione }
+                      ]}
+                    />
+                  </div>
+                ) : null}
               </div>
             </article>
           ))}
