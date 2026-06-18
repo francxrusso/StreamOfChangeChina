@@ -99,13 +99,29 @@ export async function generateEpisodeAIFields(formData: FormData) {
     if (!missingSummary && !missingAnalysis) {
       redirectMessage = "Sintesi e analisi erano gia presenti. Non ho sovrascritto nulla.";
     } else {
+      const { data: characterData, error: characterError } = await supabase
+        .from("personaggi")
+        .select("id,nome_originale,nome_italiano,nome_pinyin")
+        .eq("serie_id", episode.serie_id)
+        .order("nome_originale", { ascending: true });
+
+      if (characterError) {
+        throw new Error(characterError.message);
+      }
+
       const aiInput = {
         serieTitle: episode.serie_tv?.titolo_originale ?? "Serie non specificata",
         episodeTitle: episode.titolo_originale,
         season: episode.stagione,
         episodeNumber: episode.numero_episodio,
         transcript: episode.trascrizione,
-        episodeLink: episode.link_episodio
+        episodeLink: episode.link_episodio,
+        characters: (characterData ?? []).map((character) => ({
+          id: String(character.id),
+          nome_originale: String(character.nome_originale),
+          nome_italiano: character.nome_italiano,
+          nome_pinyin: character.nome_pinyin
+        }))
       };
 
       const updates: {

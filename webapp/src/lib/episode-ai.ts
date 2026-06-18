@@ -1,4 +1,4 @@
-import { analyzeTranscript } from "@/lib/word-analysis";
+import { analyzeTranscript, type CharacterInput } from "@/lib/word-analysis";
 
 type GenerateEpisodeAIInput = {
   serieTitle: string;
@@ -7,6 +7,7 @@ type GenerateEpisodeAIInput = {
   episodeNumber: number | null;
   transcript: string;
   episodeLink: string | null;
+  characters?: CharacterInput[];
 };
 
 type GenerateEpisodeAIOptions = {
@@ -189,6 +190,23 @@ function formatSignals(signals: { label: string; hits: number }[]) {
   return signals.map((signal) => `${signal.label} (${signal.hits})`).join(", ");
 }
 
+function formatCharacterInsights(characters: ReturnType<typeof analyzeTranscript>["personaggi"]) {
+  if (characters.length === 0) {
+    return "La trascrizione non contiene marcatori sufficienti per associare lessico ricorrente a singoli personaggi.";
+  }
+
+  return characters
+    .slice(0, 5)
+    .map((character) => {
+      const words = character.parole_caratterizzanti.slice(0, 4).map((word) => word.parola);
+      const phrases = character.combinazioni_caratterizzanti.slice(0, 2).map((phrase) => phrase.frase.replace(/\s+/g, ""));
+      const details = [...words, ...phrases].filter(Boolean);
+
+      return `${character.personaggio}: ${details.length > 0 ? formatList(details) : "contesto presente ma senza formule ricorrenti forti"}`;
+    })
+    .join("; ");
+}
+
 function getDominantNarrative(transcript: string) {
   return narrativeSignals
     .map((signal) => {
@@ -204,7 +222,7 @@ function getDominantNarrative(transcript: string) {
 }
 
 function getLocalAnalysis(input: GenerateEpisodeAIInput) {
-  const analysis = analyzeTranscript(input.transcript);
+  const analysis = analyzeTranscript(input.transcript, null, null, { personaggi: input.characters ?? [] });
   const topWords = analysis.topParole.slice(0, 10).map((item) => item.parola);
   const topPhrases = analysis.topCombinazioni.slice(0, 5).map((item) => item.frase.replace(/\s+/g, ""));
   const salientSentences = getSalientSentences(input.transcript, topWords);
@@ -224,27 +242,40 @@ function getLocalAnalysis(input: GenerateEpisodeAIInput) {
 }
 
 function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
-  const { topWords, topPhrases, salientSentences, narratives } = getLocalAnalysis(input);
+  const { analysis, topWords, topPhrases, salientSentences, narratives } = getLocalAnalysis(input);
   const mainNarrative =
     narratives[0]?.sentence ??
     "La puntata ruota attorno agli snodi principali emersi nella trascrizione, mettendo in relazione azioni, decisioni e reazioni dei personaggi.";
   const secondaryNarratives = narratives.slice(1, 3).map((signal) => signal.label);
   const secondaryText =
     secondaryNarratives.length > 0 ? ` In secondo piano emergono anche ${formatList(secondaryNarratives)}.` : "";
-  const phraseText = topPhrases.length > 0 ? ` Ricorrono inoltre formule e combinazioni come ${formatList(topPhrases)}.` : "";
+  const idiomText =
+    analysis.modiDiDire.length > 0
+      ? ` Le formule ricorrenti piu riconoscibili sono ${formatList(analysis.modiDiDire.slice(0, 4).map((phrase) => phrase.frase.replace(/\s+/g, "")))}.`
+      : topPhrases.length > 0
+        ? ` Ricorrono inoltre combinazioni come ${formatList(topPhrases)}.`
+        : "";
   const sentenceText =
     salientSentences.length > 0
       ? ` I passaggi piu rappresentativi della trascrizione insistono su: ${salientSentences.slice(0, 2).map((sentence) => `"${sentence}"`).join(" ")}`
       : "";
 
-  return `${mainNarrative}${secondaryText} La lettura dell'argomento e sostenuta da nuclei lessicali come ${formatList(topWords.slice(0, 6))}.${phraseText}${sentenceText}`;
+  return `${mainNarrative}${secondaryText} La lettura dell'argomento e sostenuta da nuclei lessicali specifici come ${formatList(topWords.slice(0, 6))}.${idiomText}${sentenceText}`;
 }
 
 function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
-  const { analysis, topWords, topPhrases, themes, emotions } = getLocalAnalysis(input);
-  const phraseText = topPhrases.length > 0 ? ` Le co-occorrenze piu ricorrenti sono ${formatList(topPhrases)}.` : "";
+  const { analysis, themes, emotions } = getLocalAnalysis(input);
+  const characterText = formatCharacterInsights(analysis.personaggi);
+  const idiomText =
+    analysis.modiDiDire.length > 0
+      ? ` Modi di dire o formule ricorrenti: ${formatList(analysis.modiDiDire.slice(0, 6).map((phrase) => phrase.frase.replace(/\s+/g, "")))}.`
+      : "";
+  const referenceText =
+    analysis.riferimenti.length > 0
+      ? ` Riferimenti ricorrenti: ${formatList(analysis.riferimenti.slice(0, 6).map((reference) => reference.parola))}.`
+      : "";
 
-  return `I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Le parole ad alta frequenza (${formatList(topWords.slice(0, 8))}) suggeriscono i principali campi semantici dell'episodio; il dato va letto come supporto analitico quantitativo, non come interpretazione narrativa completa.${phraseText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
+  return `I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Associazioni personaggio-lessico: ${characterText}.${idiomText}${referenceText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
 }
 
 function extractOutputText(response: unknown) {

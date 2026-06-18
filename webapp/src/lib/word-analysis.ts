@@ -11,11 +11,30 @@ export type PhraseStat = {
   tipo: "bigramma" | "trigramma" | "quadrigramma";
 };
 
+export type CharacterInput = {
+  id?: string;
+  nome_originale: string;
+  nome_italiano?: string | null;
+  nome_pinyin?: string | null;
+};
+
+export type CharacterLexicalStat = {
+  personaggio: string;
+  menzioni: number;
+  parole_caratterizzanti: WordStat[];
+  combinazioni_caratterizzanti: PhraseStat[];
+  contesti: string[];
+  metodo: "speaker" | "menzione";
+};
+
 export type TranscriptAnalysis = {
   totaleToken: number;
   tokenUnici: number;
   topParole: WordStat[];
   topCombinazioni: PhraseStat[];
+  personaggi: CharacterLexicalStat[];
+  modiDiDire: PhraseStat[];
+  riferimenti: WordStat[];
   parolaTarget: string | null;
   occorrenzeTarget: number | null;
   densitaTarget: number | null;
@@ -54,6 +73,12 @@ const stopwords = new Set([
   "那些",
   "这种",
   "那种",
+  "人",
+  "家",
+  "心",
+  "情",
+  "事",
+  "事儿",
   "一个",
   "什么",
   "怎么",
@@ -66,6 +91,12 @@ const stopwords = new Set([
   "不是",
   "可以",
   "知道",
+  "觉得",
+  "认为",
+  "以为",
+  "记得",
+  "明白",
+  "懂",
   "现在",
   "然后",
   "因为",
@@ -107,6 +138,21 @@ const stopwords = new Set([
   "说",
   "看",
   "想",
+  "做",
+  "干",
+  "用",
+  "拿",
+  "找",
+  "问",
+  "听",
+  "吃",
+  "喝",
+  "走",
+  "坐",
+  "站",
+  "叫",
+  "告诉",
+  "起来",
   "让",
   "能",
   "会",
@@ -242,6 +288,8 @@ const meaningfulSingleHan = new Set([
   "渊"
 ]);
 
+const referenceStopwords = new Set(["老师", "东西", "事情", "问题", "地方", "时候", "大家", "自己", "今天", "现在"]);
+
 function normalizeToken(token: string) {
   return token.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 }
@@ -291,8 +339,9 @@ export function tokenizeTranscript(text: string, options: { keepStopwords?: bool
   return tokens;
 }
 
-function getTopEntries(counts: Map<string, number>, total: number, limit: number) {
+function getTopEntries(counts: Map<string, number>, total: number, limit: number, minCount = 1) {
   return [...counts.entries()]
+    .filter(([, count]) => count >= minCount)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh"))
     .slice(0, limit)
     .map(([parola, conteggio]) => ({
@@ -334,6 +383,134 @@ function buildNgrams(tokens: string[], sizes = [2, 3, 4]): PhraseStat[] {
     }));
 }
 
+function splitLines(text: string) {
+  return text
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function sentenceLikeChunks(text: string) {
+  return text
+    .replace(/\s+/g, "\n")
+    .split(/(?<=[。！？!?])|\n+/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 4 && line.length <= 160);
+}
+
+function extractSpeakerLines(text: string) {
+  return splitLines(text)
+    .map((line) => {
+      const match = line.match(/^([\p{Script=Han}A-Za-z0-9·]{1,10})[：:]\s*(.+)$/u);
+
+      if (!match) {
+        return null;
+      }
+
+      return {
+        speaker: match[1],
+        text: match[2]
+      };
+    })
+    .filter((line): line is { speaker: string; text: string } => Boolean(line));
+}
+
+function characterAliases(character: CharacterInput) {
+  return [character.nome_originale, character.nome_italiano, character.nome_pinyin]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.trim());
+}
+
+function getCharacterContexts(text: string, aliases: string[]) {
+  const chunks = sentenceLikeChunks(text);
+  const contexts: string[] = [];
+  let mentions = 0;
+
+  for (const chunk of chunks) {
+    if (aliases.some((alias) => alias && chunk.includes(alias))) {
+      mentions += 1;
+      contexts.push(chunk);
+    }
+  }
+
+  return {
+    mentions,
+    contexts: contexts.slice(0, 8)
+  };
+}
+
+function analyzeCharacterContext(character: CharacterInput, fullText: string, speakerLines: ReturnType<typeof extractSpeakerLines>) {
+  const aliases = characterAliases(character);
+  const speakerMatches = speakerLines.filter((line) => aliases.includes(line.speaker));
+  const contextText =
+    speakerMatches.length > 0
+      ? speakerMatches.map((line) => line.text).join("\n")
+      : getCharacterContexts(fullText, aliases).contexts.join("\n");
+  const mentionData = getCharacterContexts(fullText, aliases);
+  const tokens = tokenizeTranscript(contextText);
+  const counts = new Map<string, number>();
+
+  for (const token of tokens) {
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+
+  return {
+    personaggio: character.nome_originale,
+    menzioni: speakerMatches.length > 0 ? speakerMatches.length : mentionData.mentions,
+    parole_caratterizzanti: getTopEntries(counts, Math.max(tokens.length, 1), 12, 2),
+    combinazioni_caratterizzanti: buildNgrams(tokens).slice(0, 8),
+    contesti: speakerMatches.length > 0 ? speakerMatches.slice(0, 8).map((line) => line.text) : mentionData.contexts,
+    metodo: speakerMatches.length > 0 ? "speaker" : "menzione"
+  } satisfies CharacterLexicalStat;
+}
+
+function extractCharacterStats(text: string, characters: CharacterInput[] = []) {
+  const speakerLines = extractSpeakerLines(text);
+
+  return characters
+    .map((character) => analyzeCharacterContext(character, text, speakerLines))
+    .filter((character) => character.menzioni > 0)
+    .sort((a, b) => b.menzioni - a.menzioni || a.personaggio.localeCompare(b.personaggio, "zh"))
+    .slice(0, 20);
+}
+
+function extractIdiomsAndExpressions(topCombinazioni: PhraseStat[]) {
+  return topCombinazioni
+    .filter((phrase) => {
+      const compact = phrase.frase.replace(/\s+/g, "");
+      const looksLikeIdiom = /^[\p{Script=Han}]{4,8}$/u.test(compact);
+      const hasSpecificity = phrase.frase.split(/\s+/u).some((token) => token.length >= 2 && !stopwords.has(token));
+
+      return phrase.conteggio >= 2 && hasSpecificity && (looksLikeIdiom || phrase.lunghezza >= 3);
+    })
+    .slice(0, 20);
+}
+
+function extractReferences(text: string) {
+  const quoted = [...text.matchAll(/[“《(（]([^”》)）]{2,14})[”》)）]/gu)].map((match) => match[1]);
+  const candidates = new Map<string, number>();
+
+  for (const value of quoted) {
+    const token = normalizeToken(value);
+
+    if (token && !referenceStopwords.has(token)) {
+      candidates.set(token, (candidates.get(token) ?? 0) + 1);
+    }
+  }
+
+  for (const chunk of sentenceLikeChunks(text)) {
+    for (const match of chunk.matchAll(/[\p{Script=Han}]{3,8}/gu)) {
+      const token = match[0];
+
+      if (!referenceStopwords.has(token) && !stopwords.has(token)) {
+        candidates.set(token, (candidates.get(token) ?? 0) + 1);
+      }
+    }
+  }
+
+  return getTopEntries(candidates, [...candidates.values()].reduce((sum, count) => sum + count, 0), 20, 2);
+}
+
 function normalizePhrase(phrase: string) {
   return tokenizeTranscript(phrase).join(" ");
 }
@@ -358,7 +535,12 @@ function countPhraseOccurrences(tokens: string[], phrase: string) {
   return count;
 }
 
-export function analyzeTranscript(text: string, targetWord?: string | null, targetPhrase?: string | null): TranscriptAnalysis {
+export function analyzeTranscript(
+  text: string,
+  targetWord?: string | null,
+  targetPhrase?: string | null,
+  options: { personaggi?: CharacterInput[] } = {}
+): TranscriptAnalysis {
   const tokens = tokenizeTranscript(text);
   const counts = new Map<string, number>();
   const normalizedTarget = targetWord ? normalizeToken(targetWord) : "";
@@ -374,6 +556,9 @@ export function analyzeTranscript(text: string, targetWord?: string | null, targ
 
   const topParole = getTopEntries(counts, tokens.length, 50);
   const topCombinazioni = buildNgrams(tokens);
+  const personaggi = extractCharacterStats(text, options.personaggi);
+  const modiDiDire = extractIdiomsAndExpressions(topCombinazioni);
+  const riferimenti = extractReferences(text);
   const normalizedPhrase = targetPhrase ? normalizePhrase(targetPhrase) : "";
 
   const occorrenzeTarget = normalizedTarget ? counts.get(normalizedTarget) ?? 0 : null;
@@ -387,6 +572,9 @@ export function analyzeTranscript(text: string, targetWord?: string | null, targ
     tokenUnici: counts.size,
     topParole,
     topCombinazioni,
+    personaggi,
+    modiDiDire,
+    riferimenti,
     parolaTarget: normalizedTarget || null,
     occorrenzeTarget,
     densitaTarget,
@@ -394,6 +582,6 @@ export function analyzeTranscript(text: string, targetWord?: string | null, targ
     occorrenzeFraseTarget: normalizedPhrase ? countPhraseOccurrences(tokens, normalizedPhrase) : null,
     posizioniTarget: posizioniTarget.slice(0, 100),
     note:
-      "Analisi calcolata con segmentazione lessicale automatica, filtro stopword e n-grammi ricorrenti. Utile per frequenze, combinazioni lessicali e confronto tra episodi."
+      "Analisi calcolata con segmentazione lessicale automatica, filtro stopword esteso, contesti personaggio, modi di dire e riferimenti ricorrenti."
   };
 }

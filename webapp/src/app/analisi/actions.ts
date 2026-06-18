@@ -73,17 +73,26 @@ export async function createAnalysisRun(formData: FormData) {
     analysisRedirect("error", "Client Supabase non disponibile.");
   }
 
-  const [{ data: serie, error: serieError }, { data: episodeData, error: episodesError }] = await Promise.all([
+  const [
+    { data: serie, error: serieError },
+    { data: episodeData, error: episodesError },
+    { data: characterData, error: charactersError }
+  ] = await Promise.all([
     supabase.from("serie_tv").select("id,titolo_originale").eq("id", serieId).maybeSingle(),
     supabase
       .from("episodi")
       .select("id,serie_id,stagione,numero_episodio,titolo_originale,trascrizione")
       .eq("serie_id", serieId)
       .order("stagione", { ascending: true })
-      .order("numero_episodio", { ascending: true })
+      .order("numero_episodio", { ascending: true }),
+    supabase
+      .from("personaggi")
+      .select("id,nome_originale,nome_italiano,nome_pinyin")
+      .eq("serie_id", serieId)
+      .order("nome_originale", { ascending: true })
   ]);
 
-  const firstError = serieError ?? episodesError;
+  const firstError = serieError ?? episodesError ?? charactersError;
 
   if (firstError) {
     analysisRedirect("error", firstError.message);
@@ -124,7 +133,13 @@ export async function createAnalysisRun(formData: FormData) {
     .map((episode) => episode.trascrizione)
     .filter(Boolean)
     .join("\n\n");
-  const analysis = analyzeTranscript(combinedTranscript);
+  const characters = (characterData ?? []).map((character) => ({
+    id: String(character.id),
+    nome_originale: String(character.nome_originale),
+    nome_italiano: character.nome_italiano,
+    nome_pinyin: character.nome_pinyin
+  }));
+  const analysis = analyzeTranscript(combinedTranscript, null, null, { personaggi: characters });
   const title = buildTitle(String(serie.titolo_originale), scopeTipo, selectedSeasons, episodesWithTranscript);
 
   const payload = {
@@ -141,6 +156,9 @@ export async function createAnalysisRun(formData: FormData) {
     top_combinazioni: analysis.topCombinazioni,
     statistiche: {
       modello_linguistico: "zh-mandarin-lexical-v1",
+      personaggi: analysis.personaggi,
+      modi_di_dire: analysis.modiDiDire,
+      riferimenti: analysis.riferimenti,
       episodi: episodesWithTranscript.map((episode) => ({
         id: episode.id,
         stagione: episode.stagione,

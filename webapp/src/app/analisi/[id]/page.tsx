@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BarChart3, FileText } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { type PhraseStat, type WordStat } from "@/lib/word-analysis";
+import { type CharacterLexicalStat, type PhraseStat, type WordStat } from "@/lib/word-analysis";
 import { DeleteAnalysisButton } from "./delete-analysis-button";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,9 @@ type AnalysisRunDetail = {
   top_parole: WordStat[];
   top_combinazioni: PhraseStat[];
   statistiche: {
+    personaggi?: CharacterLexicalStat[];
+    modi_di_dire?: PhraseStat[];
+    riferimenti?: WordStat[];
     episodi?: Array<{
       id: string;
       stagione: number | null;
@@ -85,6 +88,10 @@ function WordBars({ words }: { words: WordStat[] }) {
       ))}
     </div>
   );
+}
+
+function joinedPhrase(phrase: PhraseStat) {
+  return phrase.frase.replace(/\s+/g, "");
 }
 
 async function getAnalysis(id: string) {
@@ -166,6 +173,70 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
         <MetricCard label="Token" value={analysis.totale_token} />
         <MetricCard label="Token unici" value={analysis.token_unici} />
       </div>
+
+      {analysis.statistiche?.personaggi?.length ? (
+        <section className="rounded-md border border-stone-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-ink">Personaggi e lessico associato</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Quando la trascrizione non indica lo speaker, il sistema usa i contesti in cui il personaggio viene citato.
+          </p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {analysis.statistiche.personaggi.slice(0, 8).map((character) => (
+              <article key={character.personaggio} className="rounded-md border border-stone-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="font-semibold text-ink">{character.personaggio}</h3>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-600">
+                    {character.menzioni} {character.metodo === "speaker" ? "battute" : "menzioni"}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-700">
+                  {character.parole_caratterizzanti.slice(0, 6).map((word) => (
+                    <span key={`${character.personaggio}-${word.parola}`} className="rounded-sm border border-stone-200 px-2 py-1">
+                      {word.parola} ({word.conteggio})
+                    </span>
+                  ))}
+                  {character.combinazioni_caratterizzanti.slice(0, 3).map((phrase) => (
+                    <span key={`${character.personaggio}-${phrase.frase}`} className="rounded-sm border border-cinnabar/30 px-2 py-1 text-cinnabar">
+                      {joinedPhrase(phrase)} ({phrase.conteggio})
+                    </span>
+                  ))}
+                </div>
+                {character.contesti[0] ? (
+                  <p className="mt-3 border-l-2 border-stone-200 pl-3 text-sm leading-6 text-stone-600">
+                    {character.contesti[0]}
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {(analysis.statistiche?.modi_di_dire?.length || analysis.statistiche?.riferimenti?.length) ? (
+        <section className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border border-stone-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-ink">Modi di dire e formule</h2>
+            <div className="mt-4 flex flex-wrap gap-2 text-sm">
+              {(analysis.statistiche?.modi_di_dire ?? []).slice(0, 18).map((phrase) => (
+                <span key={`${phrase.frase}-${phrase.tipo}`} className="rounded-sm border border-cinnabar/30 px-2 py-1 text-cinnabar">
+                  {joinedPhrase(phrase)} ({phrase.conteggio})
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-stone-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-ink">Riferimenti ricorrenti</h2>
+            <div className="mt-4 flex flex-wrap gap-2 text-sm">
+              {(analysis.statistiche?.riferimenti ?? []).slice(0, 18).map((reference) => (
+                <span key={reference.parola} className="rounded-sm border border-stone-200 px-2 py-1 text-stone-700">
+                  {reference.parola} ({reference.conteggio})
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {analysis.output_grafici ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">
