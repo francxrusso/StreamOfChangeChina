@@ -764,6 +764,16 @@ La query string usa `page`. I filtri vengono preservati nei link di paginazione.
 5. Inserire immagine, genere, fascia eta, lavoro, descrizione.
 6. Salvare.
 
+### 16.3.1 Modificare in bulk serie, episodi e personaggi
+
+Le viste operative espongono pannelli di modifica in bulk solo agli utenti con permesso `can_edit`.
+
+- In `/serie` e' possibile selezionare piu serie e aggiornare in blocco visibilita, generi, piattaforma e distribuzione.
+- Nel dettaglio serie, dentro l'accordion Personaggi, e' possibile selezionare piu personaggi e aggiornare in blocco visibilita, genere, fascia eta e lavoro.
+- Nel dettaglio serie, dentro l'accordion Episodi, e' possibile selezionare piu episodi e aggiornare in blocco visibilita, stagione, data di messa in onda e rigenerazione pinyin del titolo.
+
+I campi lasciati vuoti non vengono modificati. La selezione avviene tramite checkbox sui singoli record.
+
 ### 16.4 Aggiungere lessico da un episodio
 
 1. Aprire dettaglio episodio.
@@ -899,6 +909,7 @@ Per aggiungere una risorsa nuova, aggiornare:
 - gestione utenti e permessi;
 - CRUD admin generico;
 - azioni rapide dalle viste;
+- modifiche in bulk per serie, episodi e personaggi dalle viste operative;
 - serie con filtro per genere e ricerca;
 - dettagli serie con accordion personaggi/episodi;
 - immagini personaggi;
