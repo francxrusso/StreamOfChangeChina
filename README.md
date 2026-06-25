@@ -19,3 +19,4 @@ This repository is a core technical component of the "Stream of Change in China 
 - [Architecture decision](docs/architecture-decision.md) records the recommended MVP stack: Next.js, React, Tailwind, Supabase, and Vercel.
 - [Supabase setup](docs/supabase-setup.md) explains how to initialize the hosted PostgreSQL database and environment variables.
 - [CSV import](docs/csv-import.md) explains how to import the initial CSV exports into Supabase.
+- [Project documentation](docs/project-documentation.md) is the current detailed technical and structural documentation for the webapp, database, admin flows, analysis tools, and deployment.
