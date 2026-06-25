@@ -1,5 +1,9 @@
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { type PublicDanmu, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
@@ -10,6 +14,7 @@ type SearchParams = {
   serie?: string;
   emozione?: string;
   episodio?: string;
+  page?: string;
   status?: string;
   message?: string;
 };
@@ -107,12 +112,13 @@ async function getOptions() {
   };
 }
 
-async function getDanmu(filters: SearchParams) {
+async function getDanmu(filters: SearchParams, pagination: PaginationState) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
     return {
       danmu: [],
+      total: 0,
       options: emptyOptions,
       error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
@@ -127,11 +133,11 @@ async function getDanmu(filters: SearchParams) {
     const options = await getOptions();
     let query = supabase
       .from("public_danmu")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("serie_titolo_originale", { ascending: true })
       .order("numero_episodio", { ascending: true, nullsFirst: false })
       .order("timecode_secondi", { ascending: true, nullsFirst: false })
-      .limit(150);
+      .range(pagination.from, pagination.to);
 
     if (q) {
       query = query.or(`testo_originale.ilike.%${q}%,testo_pinyin.ilike.%${q}%,traduzione_italiana.ilike.%${q}%`);
@@ -149,14 +155,15 @@ async function getDanmu(filters: SearchParams) {
       query = query.eq("numero_episodio", episodio);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
-      return { danmu: [], options, error: error.message };
+      return { danmu: [], total: 0, options, error: error.message };
     }
 
     return {
       danmu: (data ?? []) as PublicDanmu[],
+      total: count ?? 0,
       options,
       error: null
     };
@@ -166,7 +173,7 @@ async function getDanmu(filters: SearchParams) {
         ? unknownError.message
         : "Errore sconosciuto durante il caricamento dei Danmu.";
 
-    return { danmu: [], options: emptyOptions, error: message };
+    return { danmu: [], total: 0, options: emptyOptions, error: message };
   }
 }
 
@@ -182,25 +189,39 @@ export default async function DanmuPage({
     emozione: getValue(params.emozione),
     episodio: getValue(params.episodio)
   };
+  const page = parsePage(params.page);
+  const pagination = getPagination(page, 50);
   const notice = getNotice(params);
   const session = await getAdminSession();
-  const { danmu, options, error } = await getDanmu(filters);
+  const { danmu, total, options, error } = await getDanmu(filters, pagination);
   const returnParams = new URLSearchParams();
 
   if (filters.q) returnParams.set("q", filters.q);
   if (filters.serie) returnParams.set("serie", filters.serie);
   if (filters.emozione) returnParams.set("emozione", filters.emozione);
   if (filters.episodio) returnParams.set("episodio", filters.episodio);
+  if (page > 1) returnParams.set("page", String(page));
 
   const returnTo = `/danmu${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Danmu</h1>
-        <p className="mt-3 text-stone-700">
-          Commenti Danmu selezionati, sincronizzati agli episodi e pubblicati per la consultazione.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Danmu</h1>
+          <p className="mt-3 text-stone-700">
+            Commenti Danmu selezionati, sincronizzati agli episodi e pubblicati per la consultazione.
+          </p>
+        </div>
+        {session?.canEdit ? (
+          <Link
+            href="/admin?tab=danmu"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Aggiungi nuovo Danmu
+          </Link>
+        ) : null}
       </div>
 
       <form className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 md:grid-cols-4" action="/danmu">
@@ -284,7 +305,14 @@ export default async function DanmuPage({
 
       {danmu.length > 0 ? (
         <div className="grid gap-4">
-          <p className="text-sm text-stone-600">Mostro fino a 150 risultati.</p>
+          <Pagination
+            basePath="/danmu"
+            page={page}
+            perPage={pagination.perPage}
+            total={total}
+            params={filters}
+            itemLabel="Danmu"
+          />
           {danmu.map((item) => (
             <article key={item.id} className="rounded-md border border-stone-200 bg-white p-5">
               <div className="flex items-start justify-between gap-4">
@@ -338,6 +366,14 @@ export default async function DanmuPage({
               ) : null}
             </article>
           ))}
+          <Pagination
+            basePath="/danmu"
+            page={page}
+            perPage={pagination.perPage}
+            total={total}
+            params={filters}
+            itemLabel="Danmu"
+          />
         </div>
       ) : null}
     </section>

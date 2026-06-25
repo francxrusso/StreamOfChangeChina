@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { paginateItems, parsePage } from "@/lib/pagination";
 import { type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { SERIE_GENRE_OPTIONS, getSerieGenreLabel, splitSerieGenres } from "@/lib/serie-genres";
@@ -194,14 +197,27 @@ export default async function SeriePage({
     q: getValue(params.q).trim(),
     genere: getValue(params.genere).trim()
   };
+  const page = parsePage(params.page);
   const { serie, error } = await getSerie();
   const filteredSerie = (serie as SerieWithCount[]).filter((item) => matchesSerieFilters(item, filters));
+  const paginatedSerie = paginateItems(filteredSerie, page, 12);
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Serie TV</h1>
-        <p className="mt-3 text-stone-700">Catalogo riservato delle serie incluse nel corpus.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Serie TV</h1>
+          <p className="mt-3 text-stone-700">Catalogo riservato delle serie incluse nel corpus.</p>
+        </div>
+        {session?.canEdit ? (
+          <Link
+            href="/admin?tab=serie"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Aggiungi nuova serie
+          </Link>
+        ) : null}
       </div>
 
       {error ? (
@@ -228,7 +244,17 @@ export default async function SeriePage({
 
       {filteredSerie.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredSerie.map((item) => (
+          <div className="md:col-span-2 xl:col-span-3">
+            <Pagination
+              basePath="/serie"
+              page={page}
+              perPage={paginatedSerie.pagination.perPage}
+              total={paginatedSerie.total}
+              params={filters}
+              itemLabel="serie"
+            />
+          </div>
+          {paginatedSerie.items.map((item) => (
             <article key={item.id} className="overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
               <Link href={`/serie/${item.id}`} className="block">
                 <SeriePoster serie={item} />
@@ -325,6 +351,16 @@ export default async function SeriePage({
               </div>
             </article>
           ))}
+          <div className="md:col-span-2 xl:col-span-3">
+            <Pagination
+              basePath="/serie"
+              page={page}
+              perPage={paginatedSerie.pagination.perPage}
+              total={paginatedSerie.total}
+              params={filters}
+              itemLabel="serie"
+            />
+          </div>
         </div>
       ) : null}
     </section>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createAdminRecord, deleteAdminRecord, updateAdminRecord } from "./actions";
 import { adminResources, getAdminResource, type AdminField, type AdminResource } from "./admin-config";
+import { Pagination } from "@/components/pagination";
+import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { splitSerieGenres } from "@/lib/serie-genres";
 
@@ -13,6 +15,7 @@ type SearchParams = Promise<{
   visibility?: string;
   status?: string;
   message?: string;
+  page?: string;
 }>;
 
 type Row = Record<string, string | number | null>;
@@ -411,9 +414,9 @@ function buildRelationLookup(relationOptions: RelationOptions): RelationLookup {
   ) as RelationLookup;
 }
 
-async function getRows(resource: AdminResource, filters: AdminFilters) {
+async function getRows(resource: AdminResource, filters: AdminFilters, pagination: PaginationState) {
   const supabase = createSupabaseAdminClient();
-  let query = supabase.from(resource.table).select("*").limit(100);
+  let query = supabase.from(resource.table).select("*", { count: "exact" }).range(pagination.from, pagination.to);
 
   if (filters.q && resource.searchFields?.length) {
     const escapedQuery = filters.q.replaceAll("%", "\\%").replaceAll(",", "\\,");
@@ -432,18 +435,23 @@ async function getRows(resource: AdminResource, filters: AdminFilters) {
     query = query.order(resource.orderBy, { ascending: resource.orderBy !== "created_at" });
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []) as Row[];
+  return {
+    rows: (data ?? []) as Row[],
+    total: count ?? 0
+  };
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const activeResource = getAdminResource(params.tab);
+  const page = parsePage(params.page);
+  const pagination = getPagination(page, 25);
   const filters = {
     q: getValue(params.q).trim(),
     serie: getValue(params.serie).trim(),
@@ -458,7 +466,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       : null;
   const relationOptions = await getRelationOptions();
   const relationLookup = buildRelationLookup(relationOptions);
-  const rows = await getRows(activeResource, filters);
+  const { rows, total } = await getRows(activeResource, filters, pagination);
 
   return (
     <section className="space-y-8">
@@ -496,32 +504,50 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-ink">{activeResource.label}</h2>
-            <p className="mt-1 text-sm text-stone-600">{rows.length} record visualizzati per questa tabella.</p>
+            <p className="mt-1 text-sm text-stone-600">{total} record totali per questa tabella.</p>
           </div>
         </div>
 
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed border-stone-300 bg-white p-6 text-sm text-stone-600">Nessun record presente.</div>
         ) : (
-          rows.map((row) => (
-            <details key={activeResource.primaryKey.map((key) => row[key]).join(":")} className="rounded-lg border border-stone-200 bg-white p-4">
-              <summary className="cursor-pointer list-none">
-                <div className="flex flex-wrap items-center gap-2">
-                  {activeResource.summaryFields.map((field) => (
-                    <span key={field} className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-700">
-                      {displayFieldValue(activeResource, field, row[field], relationLookup)}
-                    </span>
-                  ))}
+          <>
+            <Pagination
+              basePath="/admin"
+              page={page}
+              perPage={pagination.perPage}
+              total={total}
+              params={{ tab: activeResource.key, ...filters }}
+              itemLabel="record"
+            />
+            {rows.map((row) => (
+              <details key={activeResource.primaryKey.map((key) => row[key]).join(":")} className="rounded-lg border border-stone-200 bg-white p-4">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeResource.summaryFields.map((field) => (
+                      <span key={field} className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                        {displayFieldValue(activeResource, field, row[field], relationLookup)}
+                      </span>
+                    ))}
+                  </div>
+                </summary>
+                <div className="mt-5 border-t border-stone-100 pt-5">
+                  <AdminForm resource={activeResource} relationOptions={relationOptions} row={row} mode="update" />
+                  <div className="mt-4">
+                    <DeleteForm resource={activeResource} row={row} />
+                  </div>
                 </div>
-              </summary>
-              <div className="mt-5 border-t border-stone-100 pt-5">
-                <AdminForm resource={activeResource} relationOptions={relationOptions} row={row} mode="update" />
-                <div className="mt-4">
-                  <DeleteForm resource={activeResource} row={row} />
-                </div>
-              </div>
-            </details>
-          ))
+              </details>
+            ))}
+            <Pagination
+              basePath="/admin"
+              page={page}
+              perPage={pagination.perPage}
+              total={total}
+              params={{ tab: activeResource.key, ...filters }}
+              itemLabel="record"
+            />
+          </>
         )}
       </section>
     </section>

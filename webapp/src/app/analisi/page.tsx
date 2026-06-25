@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { BarChart3, FileText, Layers3 } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { formatSerieGenreLabels } from "@/lib/serie-genres";
 import {
@@ -15,6 +17,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   status?: string;
   message?: string;
+  page?: string;
 }>;
 
 type AnalysisNotice = {
@@ -91,7 +94,7 @@ function scopeLabel(analysis: AnalysisRun) {
   return "Serie completa";
 }
 
-async function getAnalysisPageData() {
+async function getAnalysisPageData(pagination: PaginationState) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
@@ -99,11 +102,12 @@ async function getAnalysisPageData() {
       series: [] as AnalysisSerieOption[],
       episodes: [] as AnalysisEpisodeOption[],
       analyses: [] as AnalysisRun[],
+      total: 0,
       error: "Configurazione Supabase server mancante."
     };
   }
 
-  const [{ data: series, error: seriesError }, { data: episodes, error: episodesError }, { data: analyses, error: analysesError }] =
+  const [{ data: series, error: seriesError }, { data: episodes, error: episodesError }, { data: analyses, error: analysesError, count }] =
     await Promise.all([
       supabase.from("serie_tv").select("id,titolo_originale").order("titolo_originale", { ascending: true }),
       supabase
@@ -113,9 +117,9 @@ async function getAnalysisPageData() {
         .order("numero_episodio", { ascending: true }),
       supabase
         .from("analisi_create")
-        .select("id,titolo,scope_tipo,stagioni,episodio_ids,output_grafici,totale_episodi,totale_token,token_unici,created_at,serie_tv(titolo_originale,genere)")
+        .select("id,titolo,scope_tipo,stagioni,episodio_ids,output_grafici,totale_episodi,totale_token,token_unici,created_at,serie_tv(titolo_originale,genere)", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(50)
+        .range(pagination.from, pagination.to)
     ]);
 
   const firstError = seriesError ?? episodesError ?? analysesError;
@@ -125,6 +129,7 @@ async function getAnalysisPageData() {
       series: [] as AnalysisSerieOption[],
       episodes: [] as AnalysisEpisodeOption[],
       analyses: [] as AnalysisRun[],
+      total: 0,
       error: firstError.message
     };
   }
@@ -133,18 +138,21 @@ async function getAnalysisPageData() {
     series: (series ?? []) as AnalysisSerieOption[],
     episodes: (episodes ?? []) as AnalysisEpisodeOption[],
     analyses: (analyses ?? []) as unknown as AnalysisRun[],
+    total: count ?? 0,
     error: null
   };
 }
 
 export default async function AnalysisPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
+  const page = parsePage(params.page);
+  const pagination = getPagination(page, 12);
   const session = await getAdminSession();
   const notice = getNotice({
     status: getValue(params.status),
     message: getValue(params.message)
   });
-  const { series, episodes, analyses, error } = await getAnalysisPageData();
+  const { series, episodes, analyses, total, error } = await getAnalysisPageData(pagination);
 
   return (
     <section className="space-y-8">
@@ -174,6 +182,15 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
 
       {analyses.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="md:col-span-2 xl:col-span-3">
+            <Pagination
+              basePath="/analisi"
+              page={page}
+              perPage={pagination.perPage}
+              total={total}
+              itemLabel="analisi"
+            />
+          </div>
           {analyses.map((analysis) => (
             <article key={analysis.id} className="rounded-md border border-stone-200 bg-white p-5 transition hover:border-cinnabar hover:shadow-sm">
               <Link href={`/analisi/${analysis.id}`} className="block">
@@ -223,6 +240,15 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
               ) : null}
             </article>
           ))}
+          <div className="md:col-span-2 xl:col-span-3">
+            <Pagination
+              basePath="/analisi"
+              page={page}
+              perPage={pagination.perPage}
+              total={total}
+              itemLabel="analisi"
+            />
+          </div>
         </div>
       ) : null}
     </section>

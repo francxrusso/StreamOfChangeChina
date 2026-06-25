@@ -1,5 +1,9 @@
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { type PublicFraseParola, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 
@@ -10,6 +14,7 @@ type SearchParams = {
   serie?: string;
   emozione?: string;
   personaggio?: string;
+  page?: string;
   status?: string;
   message?: string;
 };
@@ -113,12 +118,13 @@ async function getOptions() {
   };
 }
 
-async function getFrasi(filters: SearchParams) {
+async function getFrasi(filters: SearchParams, pagination: PaginationState) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
     return {
       frasi: [],
+      total: 0,
       options: emptyOptions,
       error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
@@ -133,11 +139,11 @@ async function getFrasi(filters: SearchParams) {
     const options = await getOptions();
     let query = supabase
       .from("public_frasi_parole")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("serie_titolo_originale", { ascending: true })
       .order("numero_episodio", { ascending: true, nullsFirst: false })
       .order("timecode_inizio_secondi", { ascending: true, nullsFirst: false })
-      .limit(100);
+      .range(pagination.from, pagination.to);
 
     if (q) {
       query = query.or(
@@ -157,14 +163,15 @@ async function getFrasi(filters: SearchParams) {
       query = query.eq("personaggio_nome_originale", personaggio);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
-      return { frasi: [], options, error: error.message };
+      return { frasi: [], total: 0, options, error: error.message };
     }
 
     return {
       frasi: (data ?? []) as PublicFraseParola[],
+      total: count ?? 0,
       options,
       error: null
     };
@@ -174,7 +181,7 @@ async function getFrasi(filters: SearchParams) {
         ? unknownError.message
         : "Errore sconosciuto durante il caricamento del lessico.";
 
-    return { frasi: [], options: emptyOptions, error: message };
+    return { frasi: [], total: 0, options: emptyOptions, error: message };
   }
 }
 
@@ -190,25 +197,39 @@ export default async function FrasiPage({
     emozione: getValue(params.emozione),
     personaggio: getValue(params.personaggio)
   };
+  const page = parsePage(params.page);
+  const pagination = getPagination(page, 50);
   const notice = getNotice(params);
   const session = await getAdminSession();
-  const { frasi, options, error } = await getFrasi(filters);
+  const { frasi, total, options, error } = await getFrasi(filters, pagination);
   const returnParams = new URLSearchParams();
 
   if (filters.q) returnParams.set("q", filters.q);
   if (filters.serie) returnParams.set("serie", filters.serie);
   if (filters.emozione) returnParams.set("emozione", filters.emozione);
   if (filters.personaggio) returnParams.set("personaggio", filters.personaggio);
+  if (page > 1) returnParams.set("page", String(page));
 
   const returnTo = `/frasi${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Lessico</h1>
-        <p className="mt-3 text-stone-700">
-          Ricerca frasi, parole ed espressioni annotate nelle trascrizioni, con collegamenti a serie, episodi, personaggi ed emozioni.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Lessico</h1>
+          <p className="mt-3 text-stone-700">
+            Ricerca frasi, parole ed espressioni annotate nelle trascrizioni, con collegamenti a serie, episodi, personaggi ed emozioni.
+          </p>
+        </div>
+        {session?.canEdit ? (
+          <Link
+            href="/admin?tab=frasi"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Aggiungi lessico
+          </Link>
+        ) : null}
       </div>
 
       <form className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 md:grid-cols-4" action="/frasi">
@@ -292,7 +313,14 @@ export default async function FrasiPage({
 
       {frasi.length > 0 ? (
         <div className="grid gap-4">
-          <p className="text-sm text-stone-600">Mostro fino a 100 risultati.</p>
+          <Pagination
+            basePath="/frasi"
+            page={page}
+            perPage={pagination.perPage}
+            total={total}
+            params={filters}
+            itemLabel="elementi lessicali"
+          />
           {frasi.map((frase) => (
             <article key={frase.id} className="rounded-md border border-stone-200 bg-white p-5">
               <div className="flex items-start justify-between gap-4">
@@ -361,6 +389,14 @@ export default async function FrasiPage({
               ) : null}
             </article>
           ))}
+          <Pagination
+            basePath="/frasi"
+            page={page}
+            perPage={pagination.perPage}
+            total={total}
+            params={filters}
+            itemLabel="elementi lessicali"
+          />
         </div>
       ) : null}
     </section>

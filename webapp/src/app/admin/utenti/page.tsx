@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { UserPlus, UsersRound } from "lucide-react";
 import { requireEditSession } from "@/app/access-actions";
+import { Pagination } from "@/components/pagination";
+import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { createUser, updateUser } from "./actions";
 
@@ -19,6 +21,7 @@ type AdminUser = {
 type SearchParams = Promise<{
   status?: string;
   message?: string;
+  page?: string;
 }>;
 
 type Notice = {
@@ -63,24 +66,30 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-async function getUsers() {
+async function getUsers(pagination: PaginationState) {
   await requireEditSession();
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from("admin_users")
-    .select("id,email,display_name,is_active,can_edit,created_at,last_login_at")
-    .order("created_at", { ascending: true });
+    .select("id,email,display_name,is_active,can_edit,created_at,last_login_at", { count: "exact" })
+    .order("created_at", { ascending: true })
+    .range(pagination.from, pagination.to);
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []) as AdminUser[];
+  return {
+    users: (data ?? []) as AdminUser[],
+    total: count ?? 0
+  };
 }
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
+  const page = parsePage(params.page);
+  const pagination = getPagination(page, 25);
   const notice: Notice | null =
     params.status === "success" || params.status === "error"
       ? {
@@ -88,7 +97,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
           message: getValue(params.message) || "Nessun dettaglio disponibile."
         }
       : null;
-  const users = await getUsers();
+  const { users, total } = await getUsers(pagination);
 
   return (
     <section className="space-y-8">
@@ -103,7 +112,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
           </p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
-          <span className="font-semibold text-ink">{users.length}</span> utenti configurati
+          <span className="font-semibold text-ink">{total}</span> utenti configurati
         </div>
       </div>
 
@@ -151,6 +160,13 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
           </span>
           <h2 className="text-xl font-semibold text-ink">Utenti esistenti</h2>
         </div>
+        <Pagination
+          basePath="/admin/utenti"
+          page={page}
+          perPage={pagination.perPage}
+          total={total}
+          itemLabel="utenti"
+        />
         {users.map((user) => (
           <details key={user.id} className="rounded-lg border border-stone-200 bg-white p-4">
             <summary className="cursor-pointer list-none">
@@ -198,6 +214,13 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
             </form>
           </details>
         ))}
+        <Pagination
+          basePath="/admin/utenti"
+          page={page}
+          perPage={pagination.perPage}
+          total={total}
+          itemLabel="utenti"
+        />
       </section>
     </section>
   );
