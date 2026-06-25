@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { bulkUpdateCharacters, bulkUpdateEpisodes } from "@/app/bulk-admin-actions";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import {
   type PublicEpisodio,
@@ -66,6 +67,76 @@ function groupEpisodesBySeason(episodes: PublicEpisodio[]) {
 
 function AccordionChevron() {
   return <ChevronDown size={18} aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180" />;
+}
+
+function BulkCharactersForm({ formId, returnTo }: { formId: string; returnTo: string }) {
+  return (
+    <form id={formId} action={bulkUpdateCharacters} className="grid gap-3 rounded-md border border-stone-200 bg-stone-50 p-4 md:grid-cols-5 md:items-end">
+      <input type="hidden" name="return_to" value={returnTo} />
+      <div className="md:col-span-5">
+        <h3 className="text-sm font-semibold uppercase text-cinnabar">Modifica personaggi in bulk</h3>
+        <p className="mt-1 text-sm text-stone-600">Seleziona i personaggi e compila solo i campi da aggiornare.</p>
+      </div>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Visibilita</span>
+        <select name="visibility" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          <option value="">Non modificare</option>
+          <option value="public">public</option>
+          <option value="private">private</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Genere</span>
+        <input name="genere" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Fascia eta</span>
+        <input name="fascia_eta" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Lavoro</span>
+        <input name="lavoro" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+      </label>
+      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+        Applica bulk
+      </button>
+    </form>
+  );
+}
+
+function BulkEpisodesForm({ formId, returnTo }: { formId: string; returnTo: string }) {
+  return (
+    <form id={formId} action={bulkUpdateEpisodes} className="grid gap-3 rounded-md border border-stone-200 bg-stone-50 p-4 md:grid-cols-5 md:items-end">
+      <input type="hidden" name="return_to" value={returnTo} />
+      <div className="md:col-span-5">
+        <h3 className="text-sm font-semibold uppercase text-cinnabar">Modifica episodi in bulk</h3>
+        <p className="mt-1 text-sm text-stone-600">Seleziona gli episodi e compila solo i campi da aggiornare.</p>
+      </div>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Visibilita</span>
+        <select name="visibility" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          <option value="">Non modificare</option>
+          <option value="public">public</option>
+          <option value="private">private</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Stagione</span>
+        <input name="stagione" type="number" min={1} className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Messa in onda</span>
+        <input name="messa_in_onda" type="date" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" />
+      </label>
+      <label className="flex items-center gap-2 pb-2 text-sm text-stone-700">
+        <input name="rigenera_pinyin" type="checkbox" value="true" className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
+        Rigenera pinyin titolo
+      </label>
+      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+        Applica bulk
+      </button>
+    </form>
+  );
 }
 
 type NoticeData = {
@@ -184,6 +255,9 @@ export default async function SerieDetailPage({
   const { serie, episodi, personaggi, error } = await getSerieDetail(id);
   const episodeGroups = groupEpisodesBySeason(episodi);
   const hasMultipleSeasons = episodeGroups.length > 1;
+  const returnTo = `/serie/${id}`;
+  const bulkCharactersFormId = `bulk-personaggi-${id}`;
+  const bulkEpisodesFormId = `bulk-episodi-${id}`;
 
   if (error) {
     return (
@@ -301,6 +375,11 @@ export default async function SerieDetailPage({
         </summary>
         {personaggi.length > 0 ? (
           <div className="grid gap-3 border-t border-stone-200 p-4 md:grid-cols-2">
+            {session?.canEdit ? (
+              <div className="md:col-span-2">
+                <BulkCharactersForm formId={bulkCharactersFormId} returnTo={returnTo} />
+              </div>
+            ) : null}
             {personaggi.map((personaggio) => (
               <article key={personaggio.id} className="grid gap-3 rounded-md border border-stone-200 p-3">
                 <div className="flex items-start justify-between gap-3">
@@ -319,22 +398,28 @@ export default async function SerieDetailPage({
                   </div>
                   </div>
                   {session?.canEdit ? (
-                    <QuickAdminActions
-                      resource="personaggi"
-                      id={personaggio.id}
-                      title={personaggio.nome_originale}
-                      returnTo={`/serie/${serie.id}`}
-                      fields={[
-                        { name: "nome_originale", label: "Nome originale", value: personaggio.nome_originale },
-                        { name: "nome_pinyin", label: "Nome pinyin", value: personaggio.nome_pinyin },
-                        { name: "nome_italiano", label: "Nome italiano", value: personaggio.nome_italiano },
-                        { name: "genere", label: "Genere", value: personaggio.genere },
-                        { name: "fascia_eta", label: "Fascia eta", value: personaggio.fascia_eta },
-                        { name: "lavoro", label: "Lavoro", value: personaggio.lavoro },
-                        { name: "immagine_rappresentativa", label: "Immagine", value: personaggio.immagine_rappresentativa },
-                        { name: "descrizione", label: "Descrizione", type: "textarea", value: personaggio.descrizione }
-                      ]}
-                    />
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <label className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-ink">
+                        <input form={bulkCharactersFormId} type="checkbox" name="selected_ids" value={personaggio.id} className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
+                        Bulk
+                      </label>
+                      <QuickAdminActions
+                        resource="personaggi"
+                        id={personaggio.id}
+                        title={personaggio.nome_originale}
+                        returnTo={`/serie/${serie.id}`}
+                        fields={[
+                          { name: "nome_originale", label: "Nome originale", value: personaggio.nome_originale },
+                          { name: "nome_pinyin", label: "Nome pinyin", value: personaggio.nome_pinyin },
+                          { name: "nome_italiano", label: "Nome italiano", value: personaggio.nome_italiano },
+                          { name: "genere", label: "Genere", value: personaggio.genere },
+                          { name: "fascia_eta", label: "Fascia eta", value: personaggio.fascia_eta },
+                          { name: "lavoro", label: "Lavoro", value: personaggio.lavoro },
+                          { name: "immagine_rappresentativa", label: "Immagine", value: personaggio.immagine_rappresentativa },
+                          { name: "descrizione", label: "Descrizione", type: "textarea", value: personaggio.descrizione }
+                        ]}
+                      />
+                    </div>
                   ) : null}
                 </div>
                 {personaggio.descrizione ? (
@@ -359,6 +444,9 @@ export default async function SerieDetailPage({
           </span>
         </summary>
         <div className="grid gap-3 border-t border-stone-200 p-4">
+          {session?.canEdit && episodi.length > 0 ? (
+            <BulkEpisodesForm formId={bulkEpisodesFormId} returnTo={returnTo} />
+          ) : null}
           {episodi.length === 0 ? (
             <div className="rounded-md border border-stone-200 p-5 text-sm text-stone-700">
               Non ci sono ancora episodi per questa serie.
@@ -375,11 +463,11 @@ export default async function SerieDetailPage({
                     <AccordionChevron />
                   </span>
                 </summary>
-                <EpisodeList episodes={seasonEpisodes} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} />
+                <EpisodeList episodes={seasonEpisodes} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} bulkFormId={bulkEpisodesFormId} />
               </details>
             ))
           ) : (
-            <EpisodeList episodes={episodi} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} />
+            <EpisodeList episodes={episodi} showSeason={false} returnTo={`/serie/${serie.id}`} canEdit={Boolean(session?.canEdit)} bulkFormId={bulkEpisodesFormId} />
           )}
         </div>
       </details>
@@ -391,24 +479,35 @@ function EpisodeList({
   episodes,
   showSeason,
   returnTo,
-  canEdit
+  canEdit,
+  bulkFormId
 }: {
   episodes: PublicEpisodio[];
   showSeason: boolean;
   returnTo: string;
   canEdit: boolean;
+  bulkFormId: string;
 }) {
   return (
     <div className="divide-y divide-stone-200 border-t border-stone-200">
       {episodes.map((episodio) => (
         <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto_auto] md:items-center">
           <div className="flex flex-wrap gap-2 text-xs text-stone-600">
+            {canEdit ? (
+              <label className="inline-flex items-center gap-1 rounded-sm border border-stone-200 px-2 py-1 font-semibold text-ink">
+                <input form={bulkFormId} type="checkbox" name="selected_ids" value={episodio.id} className="h-3.5 w-3.5 rounded border-stone-300 text-cinnabar" />
+                Bulk
+              </label>
+            ) : null}
             {showSeason ? <span className="rounded-sm bg-stone-100 px-2 py-1">S{episodio.stagione ?? "-"}</span> : null}
             <span className="rounded-sm bg-stone-100 px-2 py-1">E{episodio.numero_episodio ?? "-"}</span>
           </div>
-          <Link href={`/episodi/${episodio.id}`} className="font-medium text-ink hover:text-cinnabar">
-            {episodio.titolo_originale ?? "Senza titolo"}
-          </Link>
+          <div className="min-w-0">
+            <Link href={`/episodi/${episodio.id}`} className="font-medium text-ink hover:text-cinnabar">
+              {episodio.titolo_originale ?? "Senza titolo"}
+            </Link>
+            {episodio.titolo_pinyin ? <p className="mt-1 text-xs text-stone-500">{episodio.titolo_pinyin}</p> : null}
+          </div>
           <span className="text-stone-600">{episodio.messa_in_onda ?? ""}</span>
           {canEdit ? (
             <QuickAdminActions
@@ -420,6 +519,7 @@ function EpisodeList({
                 { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
                 { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
                 { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
                 { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
                 { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
                 { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },

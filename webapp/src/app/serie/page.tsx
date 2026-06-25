@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { bulkUpdateSeries } from "@/app/bulk-admin-actions";
 import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { paginateItems, parsePage } from "@/lib/pagination";
@@ -136,6 +137,54 @@ function SerieFiltersForm({ filters }: { filters: SerieFilters }) {
   );
 }
 
+function BulkSeriesForm({ formId, returnTo }: { formId: string; returnTo: string }) {
+  return (
+    <form id={formId} action={bulkUpdateSeries} className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+      <input type="hidden" name="return_to" value={returnTo} />
+      <div className="lg:col-span-4">
+        <h2 className="text-sm font-semibold uppercase text-cinnabar">Modifica in bulk</h2>
+        <p className="mt-1 text-sm text-stone-600">Seleziona una o piu serie dalle card e compila solo i campi da aggiornare.</p>
+      </div>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Visibilita</span>
+        <select name="visibility" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          <option value="">Non modificare</option>
+          <option value="public">public</option>
+          <option value="private">private</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Generi</span>
+        <select name="genere" multiple className="min-h-24 rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          {SERIE_GENRE_OPTIONS.map((genre) => (
+            <option key={genre.value} value={genre.value}>
+              {getSerieGenreLabel(genre.value)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="grid gap-3">
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Piattaforma</span>
+          <input name="piattaforma" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Distribuzione</span>
+          <select name="tipo_distribuzione" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+            <option value="">Non modificare</option>
+            <option value="tv">tv</option>
+            <option value="streaming">streaming</option>
+            <option value="ibrida">ibrida</option>
+          </select>
+        </label>
+      </div>
+      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+        Applica bulk
+      </button>
+    </form>
+  );
+}
+
 async function getSerie() {
   const supabase = createServerSupabaseClient();
 
@@ -201,6 +250,14 @@ export default async function SeriePage({
   const { serie, error } = await getSerie();
   const filteredSerie = (serie as SerieWithCount[]).filter((item) => matchesSerieFilters(item, filters));
   const paginatedSerie = paginateItems(filteredSerie, page, 12);
+  const returnParams = new URLSearchParams();
+  const bulkSeriesFormId = "bulk-serie-form";
+
+  if (filters.q) returnParams.set("q", filters.q);
+  if (filters.genere) returnParams.set("genere", filters.genere);
+  if (page > 1) returnParams.set("page", String(page));
+
+  const returnTo = `/serie${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
 
   return (
     <section className="grid gap-6">
@@ -230,6 +287,10 @@ export default async function SeriePage({
 
       {!error ? <SerieFiltersForm filters={filters} /> : null}
 
+      {session?.canEdit && filteredSerie.length > 0 ? (
+        <BulkSeriesForm formId={bulkSeriesFormId} returnTo={returnTo} />
+      ) : null}
+
       {!error && serie.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
           Non ci sono ancora serie disponibili.
@@ -255,7 +316,13 @@ export default async function SeriePage({
             />
           </div>
           {paginatedSerie.items.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
+            <article key={item.id} className="relative overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
+              {session?.canEdit ? (
+                <label className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-md bg-white/95 px-3 py-2 text-xs font-semibold text-ink shadow-sm">
+                  <input form={bulkSeriesFormId} type="checkbox" name="selected_ids" value={item.id} className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
+                  Bulk
+                </label>
+              ) : null}
               <Link href={`/serie/${item.id}`} className="block">
                 <SeriePoster serie={item} />
               </Link>

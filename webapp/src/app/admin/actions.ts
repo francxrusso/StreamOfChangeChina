@@ -57,6 +57,13 @@ function buildPayload(formData: FormData) {
     );
   }
 
+  if (resource.key === "episodi") {
+    payload.titolo_pinyin = maybeGeneratePinyin(
+      typeof payload.titolo_pinyin === "string" ? payload.titolo_pinyin : null,
+      typeof payload.titolo_originale === "string" ? payload.titolo_originale : null
+    );
+  }
+
   if (resource.key === "personaggi") {
     payload.nome_pinyin = maybeGeneratePinyin(
       typeof payload.nome_pinyin === "string" ? payload.nome_pinyin : null,

@@ -46,6 +46,7 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
       "stagione",
       "numero_episodio",
       "titolo_originale",
+      "titolo_pinyin",
       "titolo_italiano",
       "messa_in_onda",
       "link_episodio",
@@ -159,6 +160,13 @@ type QuickValue = string | number | boolean | null;
 
 function normalizePayload(resource: QuickResource, payload: Record<string, QuickValue>) {
   if (resource === "serie") {
+    payload.titolo_pinyin = maybeGeneratePinyin(
+      typeof payload.titolo_pinyin === "string" ? payload.titolo_pinyin : null,
+      typeof payload.titolo_originale === "string" ? payload.titolo_originale : null
+    );
+  }
+
+  if (resource === "episodi") {
     payload.titolo_pinyin = maybeGeneratePinyin(
       typeof payload.titolo_pinyin === "string" ? payload.titolo_pinyin : null,
       typeof payload.titolo_originale === "string" ? payload.titolo_originale : null

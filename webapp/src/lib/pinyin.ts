@@ -1,6 +1,11 @@
 import { pinyin } from "pinyin-pro";
 
 const hanRegex = /\p{Script=Han}/u;
+const pinyinSourceRegex = /[\p{Script=Han}]+|[，。！？；：、,.!?;:（）《》“”]/gu;
+
+function extractPinyinSource(text: string) {
+  return text.match(pinyinSourceRegex)?.join("") ?? "";
+}
 
 export function generatePinyin(text: string | null | undefined) {
   const source = text?.trim();
@@ -9,7 +14,7 @@ export function generatePinyin(text: string | null | undefined) {
     return null;
   }
 
-  return pinyin(source)
+  return pinyin(extractPinyinSource(source))
     .replace(/\s+([，。！？；：、,.!?;:])/gu, "$1")
     .replace(/([（《“])\s+/gu, "$1")
     .replace(/\s+([）》”])/gu, "$1")

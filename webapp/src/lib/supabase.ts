@@ -59,6 +59,7 @@ export type PublicEpisodio = {
   stagione: number | null;
   numero_episodio: number | null;
   titolo_originale: string | null;
+  titolo_pinyin: string | null;
   titolo_italiano: string | null;
   messa_in_onda: string | null;
   durata_secondi: number | null;

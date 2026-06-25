@@ -197,6 +197,7 @@ Contiene episodi collegati a una serie:
 - stagione;
 - numero episodio;
 - titoli;
+- titolo pinyin, generato automaticamente da `titolo_originale` se lasciato vuoto;
 - data messa in onda;
 - durata;
 - `link_episodio`;
@@ -928,4 +929,3 @@ Per aggiungere una risorsa nuova, aggiornare:
 - Import CSV: `docs/csv-import.md`.
 - Mappature CSV: `docs/csv-field-mapping.md`.
 - Manuale tecnico aggiornato: questo file.
-

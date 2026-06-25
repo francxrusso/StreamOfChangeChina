@@ -15,6 +15,7 @@ type EpisodeRecord = {
   stagione: number | null;
   numero_episodio: number | null;
   titolo_originale: string | null;
+  titolo_pinyin: string | null;
   messa_in_onda: string | null;
   link_episodio: string | null;
   trascrizione: string | null;
@@ -33,6 +34,7 @@ type EpisodeNavRecord = {
   stagione: number | null;
   numero_episodio: number | null;
   titolo_originale: string | null;
+  titolo_pinyin: string | null;
 };
 
 type EpisodeNotice = {
@@ -192,7 +194,7 @@ async function getEpisode(id: string) {
     const { data, error } = await supabase
       .from("episodi")
       .select(
-        "id, serie_id, stagione, numero_episodio, titolo_originale, messa_in_onda, link_episodio, trascrizione, sintesi_automatica, analisi_tematica_emotiva, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
+        "id, serie_id, stagione, numero_episodio, titolo_originale, titolo_pinyin, messa_in_onda, link_episodio, trascrizione, sintesi_automatica, analisi_tematica_emotiva, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
       )
       .eq("id", id)
       .eq("visibility", "public")
@@ -210,7 +212,7 @@ async function getEpisode(id: string) {
 
     const { data: siblingData, error: siblingError } = await supabase
       .from("episodi")
-      .select("id, stagione, numero_episodio, titolo_originale")
+      .select("id, stagione, numero_episodio, titolo_originale, titolo_pinyin")
       .eq("serie_id", episodio.serie_id)
       .eq("visibility", "public")
       .order("stagione", { ascending: true })
@@ -354,6 +356,7 @@ export default async function EpisodePage({
         <h1 className="mt-2 text-3xl font-semibold text-ink">
           {episodio.titolo_originale ?? "Senza titolo"}
         </h1>
+        {episodio.titolo_pinyin ? <p className="mt-2 text-stone-600">{episodio.titolo_pinyin}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3 text-sm text-stone-700">
           <span>Stagione {episodio.stagione ?? "-"}</span>
           <span>Episodio {episodio.numero_episodio ?? "-"}</span>
@@ -372,6 +375,7 @@ export default async function EpisodePage({
                 { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
                 { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
                 { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
                 { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
                 { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
                 { name: "sintesi_automatica", label: "Sintesi", type: "textarea", value: episodio.sintesi_automatica },
@@ -403,6 +407,9 @@ export default async function EpisodePage({
             <span className="mt-1 block font-medium text-ink">
               {navigation.previous.numero_episodio}. {navigation.previous.titolo_originale}
             </span>
+            {navigation.previous.titolo_pinyin ? (
+              <span className="mt-1 block text-xs text-stone-500">{navigation.previous.titolo_pinyin}</span>
+            ) : null}
           </Link>
         ) : (
           <div />
@@ -417,6 +424,9 @@ export default async function EpisodePage({
             <span className="mt-1 block font-medium text-ink">
               {navigation.next.numero_episodio}. {navigation.next.titolo_originale}
             </span>
+            {navigation.next.titolo_pinyin ? (
+              <span className="mt-1 block text-xs text-stone-500">{navigation.next.titolo_pinyin}</span>
+            ) : null}
           </Link>
         ) : null}
       </nav>
