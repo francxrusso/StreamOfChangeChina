@@ -8,6 +8,7 @@ import {
   type PublicSerie
 } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { SERIE_GENRE_OPTIONS, getSerieGenreLabel, splitSerieGenres } from "@/lib/serie-genres";
 
 export const dynamic = "force-dynamic";
 
@@ -238,7 +239,16 @@ export default async function SerieDetailPage({
                   { name: "titolo_inglese", label: "Titolo inglese", value: serie.titolo_inglese },
                   { name: "anno", label: "Anno", type: "number", value: serie.anno },
                   { name: "stagioni", label: "Stagioni", type: "number", value: serie.stagioni },
-                  { name: "genere", label: "Genere", value: serie.genere },
+                  {
+                    name: "genere",
+                    label: "Genere",
+                    type: "multiselect",
+                    value: serie.genere,
+                    options: SERIE_GENRE_OPTIONS.map((genre) => ({
+                      value: genre.value,
+                      label: getSerieGenreLabel(genre.value)
+                    }))
+                  },
                   { name: "piattaforma", label: "Piattaforma", value: serie.piattaforma },
                   { name: "poster_url", label: "Poster URL", value: serie.poster_url },
                   { name: "descrizione", label: "Descrizione", type: "textarea", value: serie.descrizione }
@@ -256,7 +266,13 @@ export default async function SerieDetailPage({
             {serie.genere ? (
               <div>
                 <dt className="font-medium text-ink">Genere</dt>
-                <dd className="mt-1">{serie.genere}</dd>
+                <dd className="mt-2 flex flex-wrap gap-1.5">
+                  {splitSerieGenres(serie.genere).map((genre) => (
+                    <span key={genre} className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                      {getSerieGenreLabel(genre)}
+                    </span>
+                  ))}
+                </dd>
               </div>
             ) : null}
             {serie.piattaforma ? (

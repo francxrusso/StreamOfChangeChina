@@ -13,6 +13,7 @@ import {
   Users
 } from "lucide-react";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { formatSerieGenreLabels } from "@/lib/serie-genres";
 
 type HomeStats = {
   serie: number;
@@ -267,7 +268,11 @@ export default async function HomePage() {
                   </span>
                   <span className="flex flex-wrap items-start gap-2 text-xs text-stone-600 sm:justify-end">
                     {serie.anno ? <span className="rounded-sm bg-stone-100 px-2 py-1">{serie.anno}</span> : null}
-                    {serie.genere ? <span className="rounded-sm bg-stone-100 px-2 py-1">{serie.genere}</span> : null}
+                    {serie.genere ? (
+                      <span className="rounded-sm bg-stone-100 px-2 py-1">
+                        {formatSerieGenreLabels(serie.genere)}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               ))

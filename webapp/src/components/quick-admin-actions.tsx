@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
 import { deleteQuickAdminRecord, updateQuickAdminRecord } from "@/app/quick-admin-actions";
+import { splitSerieGenres } from "@/lib/serie-genres";
 
 export type QuickAdminField = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox";
+  type?: "text" | "textarea" | "number" | "date" | "select" | "multiselect" | "checkbox";
   value?: string | number | boolean | null;
   options?: Array<{ value: string; label: string }>;
 };
@@ -118,6 +119,22 @@ export function QuickAdminActions({ resource, id, title, returnTo, deleteReturnT
                         </option>
                       ))}
                     </select>
+                  ) : field.type === "multiselect" ? (
+                    <>
+                      <input type="hidden" name={field.name} value="" />
+                      <select
+                        name={field.name}
+                        defaultValue={splitSerieGenres(fieldValue(field.value))}
+                        multiple
+                        className="min-h-36 rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+                      >
+                        {field.options?.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
                   ) : field.type === "checkbox" ? (
                     <input
                       type="hidden"

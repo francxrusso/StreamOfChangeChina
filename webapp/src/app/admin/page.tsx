@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminRecord, deleteAdminRecord, updateAdminRecord } from "./actions";
 import { adminResources, getAdminResource, type AdminField, type AdminResource } from "./admin-config";
 import { createSupabaseAdminClient } from "@/lib/supabase";
+import { splitSerieGenres } from "@/lib/serie-genres";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,14 @@ function inputType(field: AdminField) {
   return field.type;
 }
 
+function optionValue(option: string | { value: string; label: string }) {
+  return typeof option === "string" ? option : option.value;
+}
+
+function optionLabel(option: string | { value: string; label: string }) {
+  return typeof option === "string" ? option : option.label;
+}
+
 function isPinyinField(field: AdminField) {
   return field.name.endsWith("_pinyin");
 }
@@ -133,8 +142,26 @@ function FieldControl({
       <select name={field.name} defaultValue={defaultValue} required={field.required} className={baseClass}>
         <option value="">Seleziona</option>
         {field.options?.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={optionValue(option)} value={optionValue(option)}>
+            {optionLabel(option)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (field.type === "multiselect") {
+    return (
+      <select
+        name={field.name}
+        defaultValue={splitSerieGenres(defaultValue)}
+        required={field.required}
+        multiple
+        className={`${baseClass} min-h-36`}
+      >
+        {field.options?.map((option) => (
+          <option key={optionValue(option)} value={optionValue(option)}>
+            {optionLabel(option)}
           </option>
         ))}
       </select>

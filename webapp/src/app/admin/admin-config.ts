@@ -1,3 +1,5 @@
+import { SERIE_GENRE_OPTIONS, getSerieGenreLabel } from "@/lib/serie-genres";
+
 export type AdminFieldType =
   | "text"
   | "textarea"
@@ -6,6 +8,7 @@ export type AdminFieldType =
   | "date"
   | "datetime"
   | "select"
+  | "multiselect"
   | "uuid";
 
 export type AdminField = {
@@ -13,7 +16,7 @@ export type AdminField = {
   label: string;
   type: AdminFieldType;
   required?: boolean;
-  options?: string[];
+  options?: Array<string | { value: string; label: string }>;
   relation?: "serie" | "episodi" | "personaggi" | "emozioni" | "frasi" | "danmu" | "battute";
 };
 
@@ -44,7 +47,15 @@ export const adminResources = [
       { name: "titolo_inglese", label: "Titolo inglese", type: "text" },
       { name: "anno", label: "Anno", type: "number" },
       { name: "stagioni", label: "Stagioni", type: "number" },
-      { name: "genere", label: "Genere", type: "text" },
+      {
+        name: "genere",
+        label: "Genere",
+        type: "multiselect",
+        options: SERIE_GENRE_OPTIONS.map((genre) => ({
+          value: genre.value,
+          label: getSerieGenreLabel(genre.value)
+        }))
+      },
       { name: "piattaforma", label: "Piattaforma", type: "text" },
       { name: "tipo_distribuzione", label: "Distribuzione", type: "select", options: ["tv", "streaming", "ibrida"] },
       { name: "poster_url", label: "Poster URL", type: "text" },

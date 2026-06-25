@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireEditSession } from "../access-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
+import { formatSerieGenres } from "@/lib/serie-genres";
 import { getAdminResource, type AdminField } from "./admin-config";
 
 type AdminValue = string | number | null;
@@ -27,12 +28,26 @@ function parseValue(field: AdminField, value: FormDataEntryValue | null): AdminV
   return rawValue;
 }
 
+function parseFieldValue(field: AdminField, formData: FormData): AdminValue {
+  if (field.type === "multiselect") {
+    const values = formData
+      .getAll(field.name)
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return values.length > 0 ? formatSerieGenres(values) : null;
+  }
+
+  return parseValue(field, formData.get(field.name));
+}
+
 function buildPayload(formData: FormData) {
   const resource = getAdminResource(String(formData.get("resource") ?? ""));
   const payload: Record<string, AdminValue> = {};
 
   for (const field of resource.fields) {
-    payload[field.name] = parseValue(field, formData.get(field.name));
+    payload[field.name] = parseFieldValue(field, formData);
   }
 
   if (resource.key === "serie") {

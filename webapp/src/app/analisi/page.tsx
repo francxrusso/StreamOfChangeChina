@@ -3,6 +3,7 @@ import { BarChart3, FileText, Layers3 } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { formatSerieGenreLabels } from "@/lib/serie-genres";
 import {
   CreateAnalysisModal,
   type AnalysisEpisodeOption,
@@ -183,7 +184,9 @@ export default async function AnalysisPage({ searchParams }: { searchParams: Sea
                   <span className="text-right text-xs text-stone-500">{formatDate(analysis.created_at)}</span>
                 </div>
                 <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{analysis.titolo}</h2>
-                <p className="mt-2 text-sm text-stone-600">{analysis.serie_tv?.genere ?? "Genere non impostato"}</p>
+                <p className="mt-2 text-sm text-stone-600">
+                  {formatSerieGenreLabels(analysis.serie_tv?.genere) || "Genere non impostato"}
+                </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
                   <span className="rounded-sm bg-stone-100 px-2 py-1">{scopeLabel(analysis)}</span>
                   <span className="rounded-sm bg-stone-100 px-2 py-1">{analysis.totale_episodi} episodi</span>

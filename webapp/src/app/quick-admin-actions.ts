@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireEditSession } from "@/app/access-actions";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
+import { formatSerieGenres } from "@/lib/serie-genres";
 
 type QuickResource =
   | "serie"
@@ -140,6 +141,20 @@ function parseValue(field: string, value: FormDataEntryValue | null) {
   return raw;
 }
 
+function parseQuickFieldValue(field: string, formData: FormData) {
+  if (field === "genere") {
+    const values = formData
+      .getAll(field)
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return values.length > 0 ? formatSerieGenres(values) : null;
+  }
+
+  return parseValue(field, formData.get(field));
+}
+
 type QuickValue = string | number | boolean | null;
 
 function normalizePayload(resource: QuickResource, payload: Record<string, QuickValue>) {
@@ -202,7 +217,7 @@ export async function updateQuickAdminRecord(formData: FormData) {
 
     for (const field of config.fields) {
       if (formData.has(field)) {
-        payload[field] = parseValue(field, formData.get(field));
+        payload[field] = parseQuickFieldValue(field, formData);
       }
     }
 

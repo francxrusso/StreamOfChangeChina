@@ -3,6 +3,7 @@ import { getAdminSession } from "@/app/access-actions";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { SERIE_GENRE_OPTIONS, getSerieGenreLabel, splitSerieGenres } from "@/lib/serie-genres";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ type SerieWithCount = PublicSerie & {
 type NoticeData = {
   status: "success" | "error";
   message: string;
+};
+
+type SerieFilters = {
+  q: string;
+  genere: string;
 };
 
 function getValue(value: string | string[] | undefined) {
@@ -64,6 +70,66 @@ function SeriePoster({ serie }: { serie: PublicSerie }) {
       className="aspect-[2/3] w-full rounded-md object-cover"
       loading="lazy"
     />
+  );
+}
+
+function matchesSerieFilters(serie: PublicSerie, filters: SerieFilters) {
+  const query = filters.q.trim().toLowerCase();
+  const genre = filters.genere.trim();
+  const genres = splitSerieGenres(serie.genere);
+  const matchesQuery =
+    !query ||
+    [
+      serie.titolo_originale,
+      serie.titolo_pinyin,
+      serie.titolo_italiano,
+      serie.titolo_inglese,
+      serie.descrizione,
+      serie.piattaforma
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  const matchesGenre = !genre || genres.includes(genre);
+
+  return matchesQuery && matchesGenre;
+}
+
+function SerieFiltersForm({ filters }: { filters: SerieFilters }) {
+  return (
+    <form action="/serie" className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end">
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Cerca</span>
+        <input
+          name="q"
+          defaultValue={filters.q}
+          placeholder="Titolo, piattaforma, descrizione"
+          className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+        />
+      </label>
+      <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Genere</span>
+        <select
+          name="genere"
+          defaultValue={filters.genere}
+          className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+        >
+          <option value="">Tutti</option>
+          {SERIE_GENRE_OPTIONS.map((genre) => (
+            <option key={genre.value} value={genre.value}>
+              {getSerieGenreLabel(genre.value)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex gap-2">
+        <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+          Filtra
+        </button>
+        <Link href="/serie" className="rounded-md border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:border-cinnabar hover:text-cinnabar">
+          Reset
+        </Link>
+      </div>
+    </form>
   );
 }
 
@@ -124,7 +190,12 @@ export default async function SeriePage({
   const params = await searchParams;
   const session = await getAdminSession();
   const notice = getNotice(params);
+  const filters = {
+    q: getValue(params.q).trim(),
+    genere: getValue(params.genere).trim()
+  };
   const { serie, error } = await getSerie();
+  const filteredSerie = (serie as SerieWithCount[]).filter((item) => matchesSerieFilters(item, filters));
 
   return (
     <section className="grid gap-6">
@@ -141,15 +212,23 @@ export default async function SeriePage({
 
       {notice ? <Notice notice={notice} /> : null}
 
+      {!error ? <SerieFiltersForm filters={filters} /> : null}
+
       {!error && serie.length === 0 ? (
         <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
           Non ci sono ancora serie disponibili.
         </div>
       ) : null}
 
-      {serie.length > 0 ? (
+      {!error && serie.length > 0 && filteredSerie.length === 0 ? (
+        <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
+          Nessuna serie corrisponde ai filtri selezionati.
+        </div>
+      ) : null}
+
+      {filteredSerie.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {(serie as SerieWithCount[]).map((item) => (
+          {filteredSerie.map((item) => (
             <article key={item.id} className="overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
               <Link href={`/serie/${item.id}`} className="block">
                 <SeriePoster serie={item} />
@@ -178,10 +257,16 @@ export default async function SeriePage({
                 ) : null}
 
                 <dl className="mt-5 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
-                  {item.genere ? (
+                  {splitSerieGenres(item.genere).length > 0 ? (
                     <div>
                       <dt className="font-medium text-ink">Genere</dt>
-                      <dd className="mt-1">{item.genere}</dd>
+                      <dd className="mt-2 flex flex-wrap gap-1.5">
+                        {splitSerieGenres(item.genere).map((genre) => (
+                          <span key={genre} className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                            {getSerieGenreLabel(genre)}
+                          </span>
+                        ))}
+                      </dd>
                     </div>
                   ) : null}
                   {item.stagioni ? (
@@ -220,7 +305,16 @@ export default async function SeriePage({
                         { name: "titolo_inglese", label: "Titolo inglese", value: item.titolo_inglese },
                         { name: "anno", label: "Anno", type: "number", value: item.anno },
                         { name: "stagioni", label: "Stagioni", type: "number", value: item.stagioni },
-                        { name: "genere", label: "Genere", value: item.genere },
+                        {
+                          name: "genere",
+                          label: "Genere",
+                          type: "multiselect",
+                          value: item.genere,
+                          options: SERIE_GENRE_OPTIONS.map((genre) => ({
+                            value: genre.value,
+                            label: getSerieGenreLabel(genre.value)
+                          }))
+                        },
                         { name: "piattaforma", label: "Piattaforma", value: item.piattaforma },
                         { name: "poster_url", label: "Poster URL", value: item.poster_url },
                         { name: "descrizione", label: "Descrizione", type: "textarea", value: item.descrizione }
