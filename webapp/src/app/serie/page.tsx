@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { bulkUpdateSeries } from "@/app/bulk-admin-actions";
+import { SelectAllCheckbox } from "@/components/bulk-selection-controls";
 import { Pagination } from "@/components/pagination";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { paginateItems, parsePage } from "@/lib/pagination";
@@ -144,6 +145,9 @@ function BulkSeriesForm({ formId, returnTo }: { formId: string; returnTo: string
       <div className="lg:col-span-4">
         <h2 className="text-sm font-semibold uppercase text-cinnabar">Modifica in bulk</h2>
         <p className="mt-1 text-sm text-stone-600">Seleziona una o piu serie dalle card e compila solo i campi da aggiornare.</p>
+        <div className="mt-3">
+          <SelectAllCheckbox formId={formId} label="Seleziona tutte le serie visibili" />
+        </div>
       </div>
       <label className="grid gap-1 text-sm">
         <span className="font-medium text-ink">Visibilita</span>

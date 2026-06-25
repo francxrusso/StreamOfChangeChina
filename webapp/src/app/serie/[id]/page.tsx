@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
-import { bulkUpdateCharacters, bulkUpdateEpisodes } from "@/app/bulk-admin-actions";
+import { bulkUpdateCharacters } from "@/app/bulk-admin-actions";
+import { BulkEpisodeTableEditor } from "@/components/bulk-selection-controls";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import {
   type PublicEpisodio,
@@ -96,41 +97,6 @@ function BulkCharactersForm({ formId, returnTo }: { formId: string; returnTo: st
       <label className="grid gap-1 text-sm">
         <span className="font-medium text-ink">Lavoro</span>
         <input name="lavoro" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
-      </label>
-      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
-        Applica bulk
-      </button>
-    </form>
-  );
-}
-
-function BulkEpisodesForm({ formId, returnTo }: { formId: string; returnTo: string }) {
-  return (
-    <form id={formId} action={bulkUpdateEpisodes} className="grid gap-3 rounded-md border border-stone-200 bg-stone-50 p-4 md:grid-cols-5 md:items-end">
-      <input type="hidden" name="return_to" value={returnTo} />
-      <div className="md:col-span-5">
-        <h3 className="text-sm font-semibold uppercase text-cinnabar">Modifica episodi in bulk</h3>
-        <p className="mt-1 text-sm text-stone-600">Seleziona gli episodi e compila solo i campi da aggiornare.</p>
-      </div>
-      <label className="grid gap-1 text-sm">
-        <span className="font-medium text-ink">Visibilita</span>
-        <select name="visibility" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
-          <option value="">Non modificare</option>
-          <option value="public">public</option>
-          <option value="private">private</option>
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm">
-        <span className="font-medium text-ink">Stagione</span>
-        <input name="stagione" type="number" min={1} className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
-      </label>
-      <label className="grid gap-1 text-sm">
-        <span className="font-medium text-ink">Messa in onda</span>
-        <input name="messa_in_onda" type="date" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" />
-      </label>
-      <label className="flex items-center gap-2 pb-2 text-sm text-stone-700">
-        <input name="rigenera_pinyin" type="checkbox" value="true" className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
-        Rigenera pinyin titolo
       </label>
       <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
         Applica bulk
@@ -445,7 +411,7 @@ export default async function SerieDetailPage({
         </summary>
         <div className="grid gap-3 border-t border-stone-200 p-4">
           {session?.canEdit && episodi.length > 0 ? (
-            <BulkEpisodesForm formId={bulkEpisodesFormId} returnTo={returnTo} />
+            <BulkEpisodeTableEditor formId={bulkEpisodesFormId} returnTo={returnTo} episodes={episodi} />
           ) : null}
           {episodi.length === 0 ? (
             <div className="rounded-md border border-stone-200 p-5 text-sm text-stone-700">

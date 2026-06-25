@@ -46,6 +46,21 @@ function parseNumber(formData: FormData, field: string) {
   return Number.isFinite(number) ? number : null;
 }
 
+function parseRowText(formData: FormData, field: string, id: string) {
+  const value = formData.get(`${field}_${id}`);
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseRowNumber(formData: FormData, field: string, id: string) {
+  const value = parseRowText(formData, field, id);
+  if (!value) {
+    return null;
+  }
+
+  const number = Number.parseInt(value, 10);
+  return Number.isFinite(number) ? number : null;
+}
+
 function addPayloadValue(payload: Record<string, BulkValue>, field: string, value: BulkValue) {
   if (value !== null && value !== "") {
     payload[field] = value;
@@ -175,6 +190,66 @@ export async function bulkUpdateEpisodes(formData: FormData) {
 
     revalidateBulk(returnTo);
     message = `${updatedCount + pinyinCount} aggiornamenti applicati agli episodi selezionati.`;
+  } catch (error) {
+    status = "error";
+    message = getErrorMessage(error);
+  }
+
+  redirectWithNotice(returnTo, status, message);
+}
+
+export async function bulkUpdateEpisodeRows(formData: FormData) {
+  const returnTo = safeReturnTo(formData.get("return_to"));
+  let status: "success" | "error" = "success";
+  let message = "Episodi aggiornati correttamente.";
+
+  try {
+    await requireEditSession();
+    const ids = formData
+      .getAll("episode_ids")
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (ids.length === 0) {
+      throw new Error("Seleziona almeno un episodio.");
+    }
+
+    const supabase = createSupabaseAdminClient();
+    let updatedCount = 0;
+
+    for (const id of ids) {
+      const titoloOriginale = parseRowText(formData, "titolo_originale", id);
+      const titoloPinyin = maybeGeneratePinyin(parseRowText(formData, "titolo_pinyin", id), titoloOriginale);
+
+      const payload: Record<string, BulkValue> = {
+        visibility: parseRowText(formData, "visibility", id),
+        stagione: parseRowNumber(formData, "stagione", id),
+        numero_episodio: parseRowNumber(formData, "numero_episodio", id),
+        titolo_originale: titoloOriginale,
+        titolo_pinyin: titoloPinyin,
+        titolo_italiano: parseRowText(formData, "titolo_italiano", id),
+        messa_in_onda: parseRowText(formData, "messa_in_onda", id),
+        durata_secondi: parseRowNumber(formData, "durata_secondi", id),
+        link_episodio: parseRowText(formData, "link_episodio", id),
+        trascrizione: parseRowText(formData, "trascrizione", id),
+        sintesi_automatica: parseRowText(formData, "sintesi_automatica", id),
+        analisi_tematica_emotiva: parseRowText(formData, "analisi_tematica_emotiva", id),
+        descrizione: parseRowText(formData, "descrizione", id)
+      };
+
+      const { error } = await supabase.from("episodi").update(payload).eq("id", id);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      updatedCount += 1;
+      revalidatePath(`/episodi/${id}`);
+    }
+
+    revalidateBulk(returnTo);
+    message = `${updatedCount} episodi aggiornati dalla vista tabellare.`;
   } catch (error) {
     status = "error";
     message = getErrorMessage(error);
