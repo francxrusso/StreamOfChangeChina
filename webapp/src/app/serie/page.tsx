@@ -6,6 +6,7 @@ import { SelectAllCheckbox } from "@/components/bulk-selection-controls";
 import { Pagination } from "@/components/pagination";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { SerieBulkCheckbox, SerieBulkContent, SerieBulkMode } from "@/components/serie-bulk-mode";
 import { paginateItems, parsePage } from "@/lib/pagination";
 import { type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
@@ -306,159 +307,158 @@ export default async function SeriePage({
 
       {!error ? <SerieFiltersForm filters={filters} /> : null}
 
-      {session?.canEdit && filteredSerie.length > 0 ? (
-        <BulkSeriesForm formId={bulkSeriesFormId} returnTo={returnTo} />
-      ) : null}
+      <SerieBulkMode showToggle={Boolean(session?.canEdit && filteredSerie.length > 0)}>
+        {session?.canEdit && filteredSerie.length > 0 ? (
+          <SerieBulkContent>
+            <BulkSeriesForm formId={bulkSeriesFormId} returnTo={returnTo} />
+          </SerieBulkContent>
+        ) : null}
 
-      {!error && serie.length === 0 ? (
-        <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-          Non ci sono ancora serie disponibili.
-        </div>
-      ) : null}
-
-      {!error && serie.length > 0 && filteredSerie.length === 0 ? (
-        <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
-          Nessuna serie corrisponde ai filtri selezionati.
-        </div>
-      ) : null}
-
-      {filteredSerie.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="md:col-span-2 xl:col-span-3">
-            <Pagination
-              basePath="/serie"
-              page={page}
-              perPage={paginatedSerie.pagination.perPage}
-              total={paginatedSerie.total}
-              params={filters}
-              itemLabel="serie"
-            />
+        {!error && serie.length === 0 ? (
+          <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
+            Non ci sono ancora serie disponibili.
           </div>
-          {paginatedSerie.items.map((item) => (
-            <article key={item.id} className="relative overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
-              {session?.canEdit ? (
-                <label className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-md bg-white/95 px-3 py-2 text-xs font-semibold text-ink shadow-sm">
-                  <input form={bulkSeriesFormId} type="checkbox" name="selected_ids" value={item.id} className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
-                  Bulk
-                </label>
-              ) : null}
-              <Link href={`/serie/${item.id}`} className="block">
-                <SeriePoster serie={item} />
-              </Link>
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-ink">
-                      <Link href={`/serie/${item.id}`} className="hover:text-cinnabar">
-                        {item.titolo_originale}
-                      </Link>
-                    </h2>
-                    {item.titolo_inglese ? (
-                      <p className="mt-1 text-sm text-stone-600">{item.titolo_inglese}</p>
+        ) : null}
+
+        {!error && serie.length > 0 && filteredSerie.length === 0 ? (
+          <div className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
+            Nessuna serie corrisponde ai filtri selezionati.
+          </div>
+        ) : null}
+
+        {filteredSerie.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="md:col-span-2 xl:col-span-3">
+              <Pagination
+                basePath="/serie"
+                page={page}
+                perPage={paginatedSerie.pagination.perPage}
+                total={paginatedSerie.total}
+                params={filters}
+                itemLabel="serie"
+              />
+            </div>
+            {paginatedSerie.items.map((item) => (
+              <article key={item.id} className="relative overflow-hidden rounded-md border border-stone-200 bg-white hover:border-cinnabar">
+                {session?.canEdit ? <SerieBulkCheckbox formId={bulkSeriesFormId} value={item.id} /> : null}
+                <Link href={`/serie/${item.id}`} className="block">
+                  <SeriePoster serie={item} />
+                </Link>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-ink">
+                        <Link href={`/serie/${item.id}`} className="hover:text-cinnabar">
+                          {item.titolo_originale}
+                        </Link>
+                      </h2>
+                      {item.titolo_inglese ? (
+                        <p className="mt-1 text-sm text-stone-600">{item.titolo_inglese}</p>
+                      ) : null}
+                    </div>
+                    {item.anno ? (
+                      <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                        {item.anno}
+                      </span>
                     ) : null}
                   </div>
-                  {item.anno ? (
-                    <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
-                      {item.anno}
-                    </span>
+
+                  {item.descrizione ? (
+                    <p className="mt-4 line-clamp-4 text-sm leading-6 text-stone-700">{item.descrizione}</p>
+                  ) : null}
+
+                  <dl className="mt-5 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
+                    {splitSerieGenres(item.genere).length > 0 ? (
+                      <div>
+                        <dt className="font-medium text-ink">Genere</dt>
+                        <dd className="mt-2 flex flex-wrap gap-1.5">
+                          {splitSerieGenres(item.genere).map((genre) => (
+                            <span key={genre} className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                              {getSerieGenreLabel(genre)}
+                            </span>
+                          ))}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {item.stagioni ? (
+                      <div>
+                        <dt className="font-medium text-ink">Stagioni</dt>
+                        <dd className="mt-1">{item.stagioni}</dd>
+                      </div>
+                    ) : null}
+                    <div>
+                      <dt className="font-medium text-ink">Episodi</dt>
+                      <dd className="mt-1">{item.episodi_count}</dd>
+                    </div>
+                    {item.piattaforma ? (
+                      <div>
+                        <dt className="font-medium text-ink">Piattaforma</dt>
+                        <dd className="mt-1">{item.piattaforma}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <Link
+                    href={`/serie/${item.id}`}
+                    className="mt-5 inline-flex text-sm font-medium text-cinnabar hover:text-ink"
+                  >
+                    Apri episodi
+                  </Link>
+                  {session?.canEdit ? (
+                    <div className="mt-5 border-t border-stone-100 pt-4">
+                      <QuickAdminActions
+                        resource="serie"
+                        id={item.id}
+                        title={item.titolo_originale}
+                        returnTo="/serie"
+                        fields={[
+                          { name: "titolo_originale", label: "Titolo originale", value: item.titolo_originale },
+                          { name: "titolo_pinyin", label: "Titolo pinyin", value: item.titolo_pinyin },
+                          { name: "titolo_inglese", label: "Titolo inglese", value: item.titolo_inglese },
+                          { name: "anno", label: "Anno", type: "number", value: item.anno },
+                          { name: "stagioni", label: "Stagioni", type: "number", value: item.stagioni },
+                          {
+                            name: "genere",
+                            label: "Genere",
+                            type: "multiselect",
+                            value: item.genere,
+                            options: SERIE_GENRE_OPTIONS.map((genre) => ({
+                              value: genre.value,
+                              label: getSerieGenreLabel(genre.value)
+                            }))
+                          },
+                          {
+                            name: "gestione_personaggi",
+                            label: "Inserire personaggi",
+                            type: "select",
+                            value: item.gestione_personaggi ?? true,
+                            options: [
+                              { value: "true", label: "Si, gestisci personaggi" },
+                              { value: "false", label: "No, non usare personaggi" }
+                            ]
+                          },
+                          { name: "piattaforma", label: "Piattaforma", value: item.piattaforma },
+                          { name: "poster_url", label: "Poster URL", value: item.poster_url },
+                          { name: "descrizione", label: "Descrizione", type: "textarea", value: item.descrizione }
+                        ]}
+                      />
+                    </div>
                   ) : null}
                 </div>
-
-                {item.descrizione ? (
-                  <p className="mt-4 line-clamp-4 text-sm leading-6 text-stone-700">{item.descrizione}</p>
-                ) : null}
-
-                <dl className="mt-5 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
-                  {splitSerieGenres(item.genere).length > 0 ? (
-                    <div>
-                      <dt className="font-medium text-ink">Genere</dt>
-                      <dd className="mt-2 flex flex-wrap gap-1.5">
-                        {splitSerieGenres(item.genere).map((genre) => (
-                          <span key={genre} className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
-                            {getSerieGenreLabel(genre)}
-                          </span>
-                        ))}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {item.stagioni ? (
-                    <div>
-                      <dt className="font-medium text-ink">Stagioni</dt>
-                      <dd className="mt-1">{item.stagioni}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt className="font-medium text-ink">Episodi</dt>
-                    <dd className="mt-1">{item.episodi_count}</dd>
-                  </div>
-                  {item.piattaforma ? (
-                    <div>
-                      <dt className="font-medium text-ink">Piattaforma</dt>
-                      <dd className="mt-1">{item.piattaforma}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-                <Link
-                  href={`/serie/${item.id}`}
-                  className="mt-5 inline-flex text-sm font-medium text-cinnabar hover:text-ink"
-                >
-                  Apri episodi
-                </Link>
-                {session?.canEdit ? (
-                  <div className="mt-5 border-t border-stone-100 pt-4">
-                    <QuickAdminActions
-                      resource="serie"
-                      id={item.id}
-                      title={item.titolo_originale}
-                      returnTo="/serie"
-                      fields={[
-                        { name: "titolo_originale", label: "Titolo originale", value: item.titolo_originale },
-                        { name: "titolo_pinyin", label: "Titolo pinyin", value: item.titolo_pinyin },
-                        { name: "titolo_inglese", label: "Titolo inglese", value: item.titolo_inglese },
-                        { name: "anno", label: "Anno", type: "number", value: item.anno },
-                        { name: "stagioni", label: "Stagioni", type: "number", value: item.stagioni },
-                        {
-                          name: "genere",
-                          label: "Genere",
-                          type: "multiselect",
-                          value: item.genere,
-                          options: SERIE_GENRE_OPTIONS.map((genre) => ({
-                            value: genre.value,
-                            label: getSerieGenreLabel(genre.value)
-                          }))
-                        },
-                        {
-                          name: "gestione_personaggi",
-                          label: "Inserire personaggi",
-                          type: "select",
-                          value: item.gestione_personaggi ?? true,
-                          options: [
-                            { value: "true", label: "Si, gestisci personaggi" },
-                            { value: "false", label: "No, non usare personaggi" }
-                          ]
-                        },
-                        { name: "piattaforma", label: "Piattaforma", value: item.piattaforma },
-                        { name: "poster_url", label: "Poster URL", value: item.poster_url },
-                        { name: "descrizione", label: "Descrizione", type: "textarea", value: item.descrizione }
-                      ]}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          ))}
-          <div className="md:col-span-2 xl:col-span-3">
-            <Pagination
-              basePath="/serie"
-              page={page}
-              perPage={paginatedSerie.pagination.perPage}
-              total={paginatedSerie.total}
-              params={filters}
-              itemLabel="serie"
-            />
+              </article>
+            ))}
+            <div className="md:col-span-2 xl:col-span-3">
+              <Pagination
+                basePath="/serie"
+                page={page}
+                perPage={paginatedSerie.pagination.perPage}
+                total={paginatedSerie.total}
+                params={filters}
+                itemLabel="serie"
+              />
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </SerieBulkMode>
     </section>
   );
 }
