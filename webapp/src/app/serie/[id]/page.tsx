@@ -13,6 +13,7 @@ import {
 } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { SERIE_GENRE_OPTIONS, getSerieGenreLabel, splitSerieGenres } from "@/lib/serie-genres";
+import { BilibiliDanmuImportModal } from "./bilibili-danmu-import-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -502,7 +503,7 @@ function EpisodeList({
   return (
     <div className="divide-y divide-stone-200 border-t border-stone-200">
       {episodes.map((episodio) => (
-        <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto_auto] md:items-center">
+        <article key={episodio.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[110px_1fr_auto] md:items-center">
           <div className="flex flex-wrap gap-2 text-xs text-stone-600">
             {canEdit ? (
               <label className="inline-flex items-center gap-1 rounded-sm border border-stone-200 px-2 py-1 font-semibold text-ink">
@@ -521,22 +522,30 @@ function EpisodeList({
           </div>
           <span className="text-stone-600">{episodio.messa_in_onda ?? ""}</span>
           {canEdit ? (
-            <QuickAdminActions
-              resource="episodi"
-              id={episodio.id}
-              title={episodio.titolo_originale ?? "Episodio"}
-              returnTo={returnTo}
-              fields={[
-                { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
-                { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
-                { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
-                { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
-                { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
-                { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
-                { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
-                { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
-              ]}
-            />
+            <div className="flex flex-wrap justify-end gap-2">
+              <BilibiliDanmuImportModal
+                serieId={episodio.serie_id}
+                episodeId={episodio.id}
+                episodeTitle={episodio.titolo_originale ?? "Episodio senza titolo"}
+                returnTo={returnTo}
+              />
+              <QuickAdminActions
+                resource="episodi"
+                id={episodio.id}
+                title={episodio.titolo_originale ?? "Episodio"}
+                returnTo={returnTo}
+                fields={[
+                  { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
+                  { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
+                  { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                  { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
+                  { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
+                  { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
+                  { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
+                  { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
+                ]}
+              />
+            </div>
           ) : null}
         </article>
       ))}

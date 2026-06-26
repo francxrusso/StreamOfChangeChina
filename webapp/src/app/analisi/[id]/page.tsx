@@ -3,7 +3,13 @@ import { BarChart3, FileText } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
-import { type CharacterLexicalStat, type PhraseStat, type WordStat } from "@/lib/word-analysis";
+import {
+  type CharacterLexicalStat,
+  type ConstructionStat,
+  type PhraseStat,
+  type TargetStat,
+  type WordStat
+} from "@/lib/word-analysis";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +26,9 @@ type AnalysisRunDetail = {
   top_parole: WordStat[];
   top_combinazioni: PhraseStat[];
   statistiche: {
+    target?: TargetStat[];
     personaggi?: CharacterLexicalStat[];
+    costrutti_ricorrenti?: ConstructionStat[];
     modi_di_dire?: PhraseStat[];
     riferimenti?: WordStat[];
     episodi?: Array<{
@@ -130,6 +138,10 @@ function WordBars({ words }: { words: WordStat[] }) {
 
 function joinedPhrase(phrase: PhraseStat) {
   return phrase.frase.replace(/\s+/g, "");
+}
+
+function displayPinyin(value: string | null | undefined) {
+  return value ? <span className="ml-2 text-xs font-normal text-stone-500">{value}</span> : null;
 }
 
 async function getAnalysis(id: string) {
@@ -244,6 +256,36 @@ export default async function AnalysisDetailPage({
         <MetricCard label="Token unici" value={analysis.token_unici} />
       </div>
 
+      {analysis.statistiche?.target?.length ? (
+        <section className="rounded-md border border-stone-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-ink">Parole e costrutti monitorati</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Conteggi calcolati sui target inseriti nella creazione dell'analisi.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {analysis.statistiche.target.map((target) => (
+              <article key={`${target.tipo}-${target.valore}`} className="rounded-md border border-stone-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-stone-500">
+                      {target.tipo === "parola" ? "Parola" : "Costrutto"}
+                    </p>
+                    <h3 className="mt-1 font-semibold text-ink">{target.valore}</h3>
+                    {target.normalizzato !== target.valore ? (
+                      <p className="mt-1 text-xs text-stone-500">Normalizzato: {target.normalizzato}</p>
+                    ) : null}
+                  </div>
+                  <span className="rounded-sm bg-stone-100 px-2 py-1 text-sm font-semibold text-ink">
+                    {target.conteggio}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-stone-600">Densita: {target.densita}%</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {analysis.statistiche?.personaggi?.length ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-ink">Personaggi e lessico associato</h2>
@@ -282,8 +324,35 @@ export default async function AnalysisDetailPage({
         </section>
       ) : null}
 
-      {(analysis.statistiche?.modi_di_dire?.length || analysis.statistiche?.riferimenti?.length) ? (
-        <section className="grid gap-4 md:grid-cols-2">
+      {(analysis.statistiche?.costrutti_ricorrenti?.length || analysis.statistiche?.modi_di_dire?.length || analysis.statistiche?.riferimenti?.length) ? (
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-md border border-stone-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-ink">Costrutti ricorrenti</h2>
+            <div className="mt-4 grid gap-3 text-sm">
+              {(analysis.statistiche?.costrutti_ricorrenti ?? []).slice(0, 12).map((construction) => (
+                <article key={`${construction.costrutto}-${construction.tipo}`} className="rounded-md border border-stone-200 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-ink">
+                        {construction.costrutto}
+                        {displayPinyin(construction.pinyin)}
+                      </p>
+                      <p className="mt-1 text-xs text-stone-500">{construction.tipo}</p>
+                    </div>
+                    <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                      {construction.conteggio}
+                    </span>
+                  </div>
+                  {construction.esempi[0] ? (
+                    <p className="mt-2 border-l-2 border-stone-200 pl-3 text-xs leading-5 text-stone-600">
+                      {construction.esempi[0]}
+                    </p>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+
           <div className="rounded-md border border-stone-200 bg-white p-5">
             <h2 className="text-lg font-semibold text-ink">Modi di dire e formule</h2>
             <div className="mt-4 flex flex-wrap gap-2 text-sm">
@@ -329,6 +398,7 @@ export default async function AnalysisDetailPage({
           <thead className="bg-stone-50 text-stone-700">
             <tr>
               <th className="px-4 py-3 font-medium">Parola</th>
+              <th className="px-4 py-3 font-medium">Pinyin</th>
               <th className="px-4 py-3 font-medium">Conteggio</th>
               <th className="px-4 py-3 font-medium">Peso</th>
             </tr>
@@ -337,6 +407,7 @@ export default async function AnalysisDetailPage({
             {(analysis.top_parole ?? []).slice(0, 40).map((word) => (
               <tr key={word.parola} className="border-t border-stone-200">
                 <td className="px-4 py-3 font-medium text-ink">{word.parola}</td>
+                <td className="px-4 py-3 text-stone-600">{word.pinyin ?? "-"}</td>
                 <td className="px-4 py-3 text-stone-700">{word.conteggio}</td>
                 <td className="px-4 py-3 text-stone-700">{word.percentuale}%</td>
               </tr>
@@ -354,6 +425,7 @@ export default async function AnalysisDetailPage({
           <thead className="bg-stone-50 text-stone-700">
             <tr>
               <th className="px-4 py-3 font-medium">Sequenza</th>
+              <th className="px-4 py-3 font-medium">Pinyin</th>
               <th className="px-4 py-3 font-medium">Tipo</th>
               <th className="px-4 py-3 font-medium">Conteggio</th>
             </tr>
@@ -362,6 +434,7 @@ export default async function AnalysisDetailPage({
             {(analysis.top_combinazioni ?? []).slice(0, 40).map((phrase) => (
               <tr key={`${phrase.frase}-${phrase.tipo}`} className="border-t border-stone-200">
                 <td className="px-4 py-3 font-medium text-ink">{phrase.frase}</td>
+                <td className="px-4 py-3 text-stone-600">{phrase.pinyin ?? "-"}</td>
                 <td className="px-4 py-3 text-stone-700">{phrase.tipo}</td>
                 <td className="px-4 py-3 text-stone-700">{phrase.conteggio}</td>
               </tr>

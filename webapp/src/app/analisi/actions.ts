@@ -58,6 +58,8 @@ export async function createAnalysisRun(formData: FormData) {
   const selectedSeasons = parseNumberList(formData.getAll("stagioni"));
   const selectedEpisodeIds = parseTextList(formData.getAll("episodio_ids"));
   const outputGrafici = formData.get("output_grafici") === "true";
+  const targetWords = parseTextList([formData.get("parole_target") ?? ""]);
+  const targetPhrases = parseTextList([formData.get("costrutti_target") ?? ""]);
 
   if (!serieId) {
     analysisRedirect("error", "Seleziona una serie.");
@@ -139,7 +141,11 @@ export async function createAnalysisRun(formData: FormData) {
     nome_italiano: character.nome_italiano,
     nome_pinyin: character.nome_pinyin
   }));
-  const analysis = analyzeTranscript(combinedTranscript, null, null, { personaggi: characters });
+  const analysis = analyzeTranscript(combinedTranscript, null, null, {
+    personaggi: characters,
+    targetWords,
+    targetPhrases
+  });
   const title = buildTitle(String(serie.titolo_originale), scopeTipo, selectedSeasons, episodesWithTranscript);
 
   const payload = {
@@ -155,8 +161,10 @@ export async function createAnalysisRun(formData: FormData) {
     top_parole: analysis.topParole,
     top_combinazioni: analysis.topCombinazioni,
     statistiche: {
-      modello_linguistico: "zh-mandarin-lexical-v1",
+      modello_linguistico: "zh-mandarin-lexical-v2",
+      target: analysis.target,
       personaggi: analysis.personaggi,
+      costrutti_ricorrenti: analysis.costruttiRicorrenti,
       modi_di_dire: analysis.modiDiDire,
       riferimenti: analysis.riferimenti,
       episodi: episodesWithTranscript.map((episode) => ({

@@ -248,7 +248,6 @@ for (const row of files.episodi) {
       messa_in_onda: toDate(row["Messa In Onda"]),
       trascrizione: first(row["Trascrizione"]),
       sintesi_automatica: first(row["Sintesi Automatica Episodio"]),
-      analisi_tematica_emotiva: first(row["Analisi Tematica e Emotiva"]),
       visibility: "public"
     }
   );
