@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "@/app/access-actions";
+import { normalizeCharacterGender } from "@/lib/character-genders";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { formatSerieGenres } from "@/lib/serie-genres";
 import { createSupabaseAdminClient } from "@/lib/supabase";
@@ -282,7 +283,7 @@ export async function bulkUpdateCharacters(formData: FormData) {
 
     const payload: Record<string, BulkValue> = {};
     addPayloadValue(payload, "visibility", parseText(formData, "visibility"));
-    addPayloadValue(payload, "genere", parseText(formData, "genere"));
+    addPayloadValue(payload, "genere", normalizeCharacterGender(parseText(formData, "genere")));
     addPayloadValue(payload, "fascia_eta", parseText(formData, "fascia_eta"));
     addPayloadValue(payload, "lavoro", parseText(formData, "lavoro"));
 

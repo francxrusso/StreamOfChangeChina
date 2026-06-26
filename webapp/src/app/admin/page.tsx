@@ -64,6 +64,14 @@ function displayFieldValue(resource: AdminResource, fieldName: string, value: un
     return relationLookup[field.relation].get(value) ?? asDisplayValue(value);
   }
 
+  if (field?.options && typeof value === "string") {
+    const matchingOption = field.options.find((option) => optionValue(option) === value);
+
+    if (matchingOption) {
+      return optionLabel(matchingOption);
+    }
+  }
+
   return asDisplayValue(value);
 }
 
