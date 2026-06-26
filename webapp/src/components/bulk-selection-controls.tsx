@@ -181,9 +181,6 @@ export function BulkEpisodeTableEditor({
                         <th className="border-b border-stone-200 px-3 py-2">Link episodio</th>
                         <th className="border-b border-stone-200 px-3 py-2">Descrizione</th>
                         <th className="border-b border-stone-200 px-3 py-2">Trama / sintesi</th>
-                        <th className="border-b border-stone-200 px-3 py-2">Analisi parole</th>
-                        <th className="border-b border-stone-200 px-3 py-2">Analisi emozioni</th>
-                        <th className="border-b border-stone-200 px-3 py-2">Analisi legacy</th>
                         <th className="border-b border-stone-200 px-3 py-2">Trascrizione</th>
                       </tr>
                     </thead>
@@ -275,27 +272,6 @@ export function BulkEpisodeTableEditor({
                             <textarea
                               name={`sintesi_automatica_${episode.id}`}
                               defaultValue={toInputValue(episode.sintesi_automatica)}
-                              className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
-                            />
-                          </td>
-                          <td className="border-b border-stone-100 px-3 py-2">
-                            <textarea
-                              name={`analisi_tematica_parole_${episode.id}`}
-                              defaultValue={toInputValue(episode.analisi_tematica_parole)}
-                              className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
-                            />
-                          </td>
-                          <td className="border-b border-stone-100 px-3 py-2">
-                            <textarea
-                              name={`analisi_emozioni_${episode.id}`}
-                              defaultValue={toInputValue(episode.analisi_emozioni)}
-                              className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
-                            />
-                          </td>
-                          <td className="border-b border-stone-100 px-3 py-2">
-                            <textarea
-                              name={`analisi_tematica_emotiva_${episode.id}`}
-                              defaultValue={toInputValue(episode.analisi_tematica_emotiva)}
                               className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
                             />
                           </td>

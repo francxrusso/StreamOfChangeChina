@@ -84,7 +84,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["serie_id", "stagione", "numero_episodio", "titolo_originale", "visibility"],
-    searchFields: ["titolo_originale", "titolo_pinyin", "titolo_italiano", "trascrizione", "sintesi_automatica", "analisi_tematica_parole", "analisi_emozioni", "descrizione"],
+    searchFields: ["titolo_originale", "titolo_pinyin", "titolo_italiano", "trascrizione", "sintesi_automatica", "descrizione"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "stagione", label: "Stagione", type: "number", required: true },
@@ -97,9 +97,6 @@ export const adminResources = [
       { name: "link_episodio", label: "Link episodio", type: "text" },
       { name: "trascrizione", label: "Trascrizione", type: "textarea" },
       { name: "sintesi_automatica", label: "Trama / sintesi", type: "textarea" },
-      { name: "analisi_tematica_parole", label: "Analisi tematica per parole", type: "textarea" },
-      { name: "analisi_emozioni", label: "Analisi emozioni", type: "textarea" },
-      { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva legacy", type: "textarea" },
       { name: "descrizione", label: "Descrizione", type: "textarea" },
       { name: "note_admin", label: "Note admin", type: "textarea" },
       { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true }

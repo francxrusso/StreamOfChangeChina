@@ -67,9 +67,6 @@ export type PublicEpisodio = {
   link_episodio: string | null;
   trascrizione: string | null;
   sintesi_automatica: string | null;
-  analisi_tematica_emotiva: string | null;
-  analisi_tematica_parole: string | null;
-  analisi_emozioni: string | null;
   descrizione: string | null;
 };
 

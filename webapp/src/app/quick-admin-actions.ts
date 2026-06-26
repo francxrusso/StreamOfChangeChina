@@ -54,9 +54,6 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
       "link_episodio",
       "trascrizione",
       "sintesi_automatica",
-      "analisi_tematica_parole",
-      "analisi_emozioni",
-      "analisi_tematica_emotiva",
       "visibility"
     ],
     revalidate: ["/serie", "/admin"]

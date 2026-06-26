@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "@/app/access-actions";
-import { generateEpisodeEmotionAnalysis, generateEpisodeSummary, generateEpisodeThemeAnalysis } from "@/lib/episode-ai";
+import { generateEpisodeSummary } from "@/lib/episode-ai";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -16,9 +16,6 @@ type EpisodeForAI = {
   link_episodio: string | null;
   trascrizione: string | null;
   sintesi_automatica: string | null;
-  analisi_tematica_emotiva: string | null;
-  analisi_tematica_parole: string | null;
-  analisi_emozioni: string | null;
   serie_tv: {
     titolo_originale: string;
   } | null;
@@ -76,7 +73,7 @@ export async function generateEpisodeAIFields(formData: FormData) {
     const { data, error } = await supabase
       .from("episodi")
       .select(
-        "id,serie_id,stagione,numero_episodio,titolo_originale,link_episodio,trascrizione,sintesi_automatica,analisi_tematica_emotiva,analisi_tematica_parole,analisi_emozioni,serie_tv(titolo_originale)"
+        "id,serie_id,stagione,numero_episodio,titolo_originale,link_episodio,trascrizione,sintesi_automatica,serie_tv(titolo_originale)"
       )
       .eq("id", episodeId)
       .maybeSingle();
@@ -92,57 +89,29 @@ export async function generateEpisodeAIFields(formData: FormData) {
     }
 
     if (!episode.trascrizione?.trim()) {
-      throw new Error("Serve una trascrizione per generare sintesi e analisi.");
+      throw new Error("Serve una trascrizione per generare la sintesi della trama.");
     }
 
     const missingSummary = forceRegenerate || !episode.sintesi_automatica?.trim();
-    const missingThemeAnalysis = forceRegenerate || !episode.analisi_tematica_parole?.trim();
-    const missingEmotionAnalysis = forceRegenerate || !episode.analisi_emozioni?.trim();
 
-    if (!missingSummary && !missingThemeAnalysis && !missingEmotionAnalysis) {
-      redirectMessage = "Trama, analisi tematica e analisi emozioni erano gia presenti. Non ho sovrascritto nulla.";
+    if (!missingSummary) {
+      redirectMessage = "La sintesi della trama era gia presente. Non ho sovrascritto nulla.";
     } else {
-      const { data: characterData, error: characterError } = await supabase
-        .from("personaggi")
-        .select("id,nome_originale,nome_italiano,nome_pinyin")
-        .eq("serie_id", episode.serie_id)
-        .order("nome_originale", { ascending: true });
-
-      if (characterError) {
-        throw new Error(characterError.message);
-      }
-
       const aiInput = {
         serieTitle: episode.serie_tv?.titolo_originale ?? "Serie non specificata",
         episodeTitle: episode.titolo_originale,
         season: episode.stagione,
         episodeNumber: episode.numero_episodio,
         transcript: episode.trascrizione,
-        episodeLink: episode.link_episodio,
-        characters: (characterData ?? []).map((character) => ({
-          id: String(character.id),
-          nome_originale: String(character.nome_originale),
-          nome_italiano: character.nome_italiano,
-          nome_pinyin: character.nome_pinyin
-        }))
+        episodeLink: episode.link_episodio
       };
 
       const updates: {
         sintesi_automatica?: string;
-        analisi_tematica_parole?: string;
-        analisi_emozioni?: string;
       } = {};
 
       if (missingSummary) {
         updates.sintesi_automatica = await generateEpisodeSummary(aiInput);
-      }
-
-      if (missingThemeAnalysis) {
-        updates.analisi_tematica_parole = await generateEpisodeThemeAnalysis(aiInput);
-      }
-
-      if (missingEmotionAnalysis) {
-        updates.analisi_emozioni = await generateEpisodeEmotionAnalysis(aiInput);
       }
 
       const { error: updateError } = await supabase.from("episodi").update(updates).eq("id", episodeId);
@@ -154,15 +123,9 @@ export async function generateEpisodeAIFields(formData: FormData) {
       revalidatePath(`/episodi/${episodeId}`);
       revalidatePath(`/serie/${episode.serie_id}`);
 
-      const generatedFields = [
-        missingSummary ? "trama/sintesi" : null,
-        missingThemeAnalysis ? "analisi tematica per parole" : null,
-        missingEmotionAnalysis ? "analisi emozioni" : null
-      ].filter(Boolean);
-
       redirectMessage = forceRegenerate
-        ? `Rigenerazione completata: ${generatedFields.join(" e ")} aggiornate.`
-        : `Generazione completata: ${generatedFields.join(" e ")} generate.`;
+        ? "Rigenerazione completata: sintesi della trama aggiornata."
+        : "Generazione completata: sintesi della trama generata.";
     }
   } catch (error) {
     redirectStatus = "error";
