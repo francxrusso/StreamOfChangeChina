@@ -14,6 +14,7 @@ type TranscriptSegment = {
 };
 
 const speakerLineRegex = /^\s*([^：:\n]{1,24})[：:]\s*(.+)$/u;
+const timecodeLineRegex = /(^|\n)\s*(?:\[?\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?\]?|\[?\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}\]?)/u;
 
 function isPlausibleSpeakerLabel(value: string) {
   const label = value.trim();
@@ -89,7 +90,14 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
     () => plainTranscript.split("\n").filter((line) => line.trim()).length,
     [plainTranscript]
   );
-  const speakerSegments = useMemo(() => (segments?.length ? segments : parseSpeakerSegments(text)), [segments, text]);
+  const hasTimecodes = useMemo(() => timecodeLineRegex.test(plainTranscript), [plainTranscript]);
+  const speakerSegments = useMemo(() => {
+    if (hasTimecodes) {
+      return [];
+    }
+
+    return segments?.length ? segments : parseSpeakerSegments(text);
+  }, [hasTimecodes, segments, text]);
   const hasSpeakerSegments = speakerSegments.length > 0;
   const speakers = useMemo(
     () => Array.from(new Set(speakerSegments.map((segment) => segment.speaker))).sort((a, b) => a.localeCompare(b, "zh")),
