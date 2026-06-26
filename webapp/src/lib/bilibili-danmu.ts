@@ -29,6 +29,14 @@ function cleanDanmuText(value: string) {
     .trim();
 }
 
+function isMeaningfulDanmuText(value: string) {
+  const withoutPunctuation = value
+    .replace(/[\p{P}\p{S}\s]+/gu, "")
+    .trim();
+
+  return withoutPunctuation.length > 0;
+}
+
 function parsePAttribute(attributes: string) {
   const match = attributes.match(/\bp\s*=\s*(["'])(.*?)\1/u);
   const raw = match?.[2]?.split(",")[0]?.trim() ?? "";
@@ -49,7 +57,7 @@ export function parseBilibiliDanmuXml(xml: string): BilibiliDanmuParseResult {
     const timecode = parsePAttribute(match[1]);
     const text = cleanDanmuText(match[2]);
 
-    if (timecode === null || !text) {
+    if (timecode === null || !text || !isMeaningfulDanmuText(text)) {
       skippedCount += 1;
       continue;
     }

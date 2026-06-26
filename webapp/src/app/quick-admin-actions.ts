@@ -93,7 +93,7 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
   },
   danmu: {
     table: "danmu",
-    fields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "sentiment", "nota_analisi", "visibility"],
+    fields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "sentiment", "nota_analisi", "screenshot_url", "visibility"],
     revalidate: ["/danmu", "/admin"]
   },
   analisi: {

@@ -5,6 +5,7 @@ import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { TranscriptViewer } from "@/components/transcript-viewer";
+import { BilibiliDanmuImportModal } from "@/app/serie/[id]/bilibili-danmu-import-modal";
 import { generateEpisodeAIFields } from "./actions";
 import { QuickLessicoModal } from "./quick-lessico-modal";
 
@@ -370,6 +371,28 @@ export default async function EpisodePage({
               returnTo={`/episodi/${episodio.id}`}
               deleteReturnTo={`/serie/${episodio.serie_id}`}
               align="start"
+              variant="menu"
+              extraActions={
+                <>
+                  {episodio.link_episodio ? (
+                    <a
+                      href={episodio.link_episodio}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm font-semibold text-ink hover:bg-stone-50"
+                    >
+                      Apri link episodio
+                    </a>
+                  ) : null}
+                  <BilibiliDanmuImportModal
+                    serieId={episodio.serie_id}
+                    episodeId={episodio.id}
+                    episodeTitle={episodio.titolo_originale ?? "Episodio senza titolo"}
+                    returnTo={`/episodi/${episodio.id}`}
+                    variant="menu-item"
+                  />
+                </>
+              }
               fields={[
                 { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
                 { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
@@ -383,7 +406,7 @@ export default async function EpisodePage({
             />
           </div>
         ) : null}
-        {episodio.link_episodio ? (
+        {!session?.canEdit && episodio.link_episodio ? (
           <a
             href={episodio.link_episodio}
             target="_blank"

@@ -133,5 +133,7 @@ export type PublicDanmu = {
   colore: string | null;
   like_ricevuti: number | null;
   nota_analisi: string | null;
+  screenshot_url: string | null;
+  screenshot_storage_path: string | null;
   emozioni: string[];
 };

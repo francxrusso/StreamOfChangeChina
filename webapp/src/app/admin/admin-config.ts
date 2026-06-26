@@ -185,7 +185,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["testo_originale", "serie_id", "timecode_secondi", "visibility"],
-    searchFields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "piattaforma", "sentiment", "nota_analisi", "note_admin", "note"],
+    searchFields: ["testo_originale", "testo_pinyin", "traduzione_italiana", "piattaforma", "sentiment", "nota_analisi", "screenshot_url", "note_admin", "note"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "episodio_id", label: "Episodio", type: "uuid", relation: "episodi" },
@@ -200,6 +200,8 @@ export const adminResources = [
       { name: "colore", label: "Colore", type: "text" },
       { name: "like_ricevuti", label: "Like ricevuti", type: "number" },
       { name: "nota_analisi", label: "Nota analisi", type: "textarea" },
+      { name: "screenshot_url", label: "Screenshot URL", type: "text" },
+      { name: "screenshot_storage_path", label: "Screenshot storage path", type: "text" },
       { name: "note_admin", label: "Note admin", type: "textarea" },
       { name: "note", label: "Note", type: "textarea" },
       { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true },

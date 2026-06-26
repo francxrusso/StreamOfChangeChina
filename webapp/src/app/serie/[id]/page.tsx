@@ -522,30 +522,44 @@ function EpisodeList({
           </div>
           <span className="text-stone-600">{episodio.messa_in_onda ?? ""}</span>
           {canEdit ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <BilibiliDanmuImportModal
-                serieId={episodio.serie_id}
-                episodeId={episodio.id}
-                episodeTitle={episodio.titolo_originale ?? "Episodio senza titolo"}
-                returnTo={returnTo}
-              />
-              <QuickAdminActions
-                resource="episodi"
-                id={episodio.id}
-                title={episodio.titolo_originale ?? "Episodio"}
-                returnTo={returnTo}
-                fields={[
-                  { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
-                  { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
-                  { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
-                  { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
-                  { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
-                  { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
-                  { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
-                  { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
-                ]}
-              />
-            </div>
+            <QuickAdminActions
+              resource="episodi"
+              id={episodio.id}
+              title={episodio.titolo_originale ?? "Episodio"}
+              returnTo={returnTo}
+              variant="menu"
+              extraActions={
+                <>
+                  {episodio.link_episodio ? (
+                    <a
+                      href={episodio.link_episodio}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm font-semibold text-ink hover:bg-stone-50"
+                    >
+                      Apri link episodio
+                    </a>
+                  ) : null}
+                  <BilibiliDanmuImportModal
+                    serieId={episodio.serie_id}
+                    episodeId={episodio.id}
+                    episodeTitle={episodio.titolo_originale ?? "Episodio senza titolo"}
+                    returnTo={returnTo}
+                    variant="menu-item"
+                  />
+                </>
+              }
+              fields={[
+                { name: "stagione", label: "Stagione", type: "number", value: episodio.stagione },
+                { name: "numero_episodio", label: "Numero episodio", type: "number", value: episodio.numero_episodio },
+                { name: "titolo_originale", label: "Titolo originale", value: episodio.titolo_originale },
+                { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
+                { name: "titolo_italiano", label: "Titolo italiano", value: episodio.titolo_italiano },
+                { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
+                { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
+                { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
+              ]}
+            />
           ) : null}
         </article>
       ))}

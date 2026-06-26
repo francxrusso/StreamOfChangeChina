@@ -7,6 +7,7 @@ import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { type PublicDanmu, type PublicSerie } from "@/lib/supabase";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
+import { DanmuScreenshotModal } from "./danmu-screenshot-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,10 @@ const emptyOptions: OptionData = {
 type DanmuNotice = {
   status: "success" | "error";
   message: string;
+};
+
+type DanmuWithScreenshot = PublicDanmu & {
+  screenshot_display_url: string | null;
 };
 
 function getValue(value: string | string[] | undefined) {
@@ -162,8 +167,10 @@ async function getDanmu(filters: SearchParams, pagination: PaginationState) {
       return { danmu: [], total: 0, options, error: error.message };
     }
 
+    const danmuWithScreenshots = await attachScreenshotUrls(supabase, (data ?? []) as PublicDanmu[]);
+
     return {
-      danmu: (data ?? []) as PublicDanmu[],
+      danmu: danmuWithScreenshots,
       total: count ?? 0,
       options,
       error: null
@@ -176,6 +183,31 @@ async function getDanmu(filters: SearchParams, pagination: PaginationState) {
 
     return { danmu: [], total: 0, options: emptyOptions, error: message };
   }
+}
+
+async function attachScreenshotUrls(
+  supabase: NonNullable<ReturnType<typeof createServerSupabaseClient>>,
+  danmu: PublicDanmu[]
+): Promise<DanmuWithScreenshot[]> {
+  const signedUrls = new Map<string, string>();
+  const storagePaths = [...new Set(danmu.map((item) => item.screenshot_storage_path).filter(Boolean))] as string[];
+
+  await Promise.all(
+    storagePaths.map(async (path) => {
+      const { data } = await supabase.storage.from("danmu-screenshots").createSignedUrl(path, 60 * 60);
+
+      if (data?.signedUrl) {
+        signedUrls.set(path, data.signedUrl);
+      }
+    })
+  );
+
+  return danmu.map((item) => ({
+    ...item,
+    screenshot_display_url: item.screenshot_storage_path
+      ? signedUrls.get(item.screenshot_storage_path) ?? item.screenshot_url
+      : item.screenshot_url
+  }));
 }
 
 export default async function DanmuPage({
@@ -334,21 +366,45 @@ export default async function DanmuPage({
                   ) : null}
                 </div>
                 {session?.canEdit ? (
-                  <QuickAdminActions
-                    resource="danmu"
-                    id={item.id}
-                    title={item.testo_originale}
-                    returnTo={returnTo}
-                    fields={[
-                      { name: "testo_originale", label: "Testo originale", type: "textarea", value: item.testo_originale },
-                      { name: "testo_pinyin", label: "Pinyin", type: "textarea", value: item.testo_pinyin },
-                      { name: "traduzione_italiana", label: "Traduzione italiana", type: "textarea", value: item.traduzione_italiana },
-                      { name: "sentiment", label: "Sentiment", value: item.sentiment },
-                      { name: "nota_analisi", label: "Nota analisi", type: "textarea", value: item.nota_analisi }
-                    ]}
-                  />
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <DanmuScreenshotModal
+                      id={item.id}
+                      title={item.testo_originale}
+                      returnTo={returnTo}
+                      currentUrl={item.screenshot_url}
+                    />
+                    <QuickAdminActions
+                      resource="danmu"
+                      id={item.id}
+                      title={item.testo_originale}
+                      returnTo={returnTo}
+                      fields={[
+                        { name: "testo_originale", label: "Testo originale", type: "textarea", value: item.testo_originale },
+                        { name: "testo_pinyin", label: "Pinyin", type: "textarea", value: item.testo_pinyin },
+                        { name: "traduzione_italiana", label: "Traduzione italiana", type: "textarea", value: item.traduzione_italiana },
+                        { name: "sentiment", label: "Sentiment", value: item.sentiment },
+                        { name: "nota_analisi", label: "Nota analisi", type: "textarea", value: item.nota_analisi },
+                        { name: "screenshot_url", label: "Screenshot URL", value: item.screenshot_url }
+                      ]}
+                    />
+                  </div>
                 ) : null}
               </div>
+              {item.screenshot_display_url ? (
+                <a
+                  href={item.screenshot_display_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 block overflow-hidden rounded-md border border-stone-200 bg-stone-50"
+                >
+                  <img
+                    src={item.screenshot_display_url}
+                    alt={`Screenshot danmu: ${item.testo_originale}`}
+                    className="max-h-72 w-full object-contain"
+                    loading="lazy"
+                  />
+                </a>
+              ) : null}
               <h2 className="mt-4 text-lg font-semibold leading-7 text-ink">{item.testo_originale}</h2>
               {item.testo_pinyin ? <p className="mt-2 text-sm text-stone-600">{item.testo_pinyin}</p> : null}
               {item.traduzione_italiana ? (
