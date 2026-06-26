@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "../access-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase";
+import { normalizeCharacterGender } from "@/lib/character-genders";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { formatSerieGenres } from "@/lib/serie-genres";
 import { getAdminResource, type AdminField } from "./admin-config";
@@ -77,6 +78,7 @@ function buildPayload(formData: FormData) {
       typeof payload.nome_pinyin === "string" ? payload.nome_pinyin : null,
       typeof payload.nome_originale === "string" ? payload.nome_originale : null
     );
+    payload.genere = normalizeCharacterGender(typeof payload.genere === "string" ? payload.genere : null);
   }
 
   if (resource.key === "frasi") {

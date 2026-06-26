@@ -259,22 +259,33 @@ function getLocalAnalysis(input: GenerateEpisodeAIInput) {
 }
 
 function generateLocalEpisodeSummary(input: GenerateEpisodeAIInput) {
-  const { salientSentences, narratives } = getLocalAnalysis(input);
+  const { narratives } = getLocalAnalysis(input);
+  const narrativeLabel = narratives[0]?.label;
   const mainNarrative =
-    narratives[0]?.sentence ??
-    "La puntata ruota attorno agli snodi principali emersi nella trascrizione, mettendo in relazione azioni, decisioni e reazioni dei personaggi.";
+    narrativeLabel === "indagine criminale"
+      ? "In questo episodio, i protagonisti si muovono dentro un caso da ricostruire: emergono indizi, sospetti e passaggi d'indagine che portano gradualmente verso la verita."
+      : narrativeLabel === "relazioni sentimentali"
+        ? "In questo episodio, la trama segue tensioni e desideri legati alle relazioni tra i personaggi, tra avvicinamenti, incomprensioni e scelte che cambiano gli equilibri affettivi."
+        : narrativeLabel === "amicizia e convivenza"
+          ? "In questo episodio, il racconto si concentra sulla vita condivisa dei personaggi, mostrando situazioni quotidiane, piccoli conflitti e momenti di solidarieta."
+          : narrativeLabel === "lavoro e responsabilita"
+            ? "In questo episodio, i personaggi affrontano decisioni pratiche e responsabilita concrete, mentre lavoro, obiettivi e pressioni esterne orientano lo sviluppo della puntata."
+            : narrativeLabel === "mistero e rivelazione"
+              ? "In questo episodio, una scoperta o un'informazione nascosta spinge i personaggi a rivedere cio che sanno, aprendo un percorso di chiarimento e rivelazione."
+              : "In questo episodio, la storia segue gli snodi principali della puntata, mettendo in relazione azioni, scelte e reazioni dei personaggi.";
   const secondaryNarratives = narratives.slice(1, 3).map((signal) => signal.label);
   const secondaryText =
-    secondaryNarratives.length > 0 ? ` In secondo piano emergono anche ${formatList(secondaryNarratives)}.` : "";
-  const quote = pickEpisodeQuote(input.transcript, salientSentences);
-  const quoteText = quote ? `\n\n“${quote}”` : "";
+    secondaryNarratives.length > 0 ? ` La vicenda intreccia anche elementi di ${formatList(secondaryNarratives)}.` : "";
 
-  return `${mainNarrative}${secondaryText}${quoteText}`;
+  return `${mainNarrative}${secondaryText}`;
 }
 
-function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
-  const { analysis, themes, emotions } = getLocalAnalysis(input);
+function generateLocalEpisodeThemeAnalysis(input: GenerateEpisodeAIInput) {
+  const { analysis, themes } = getLocalAnalysis(input);
   const characterText = formatCharacterInsights(analysis.personaggi);
+  const topWordsText = analysis.topParole.length > 0
+    ? ` Parole chiave ricorrenti: ${formatList(analysis.topParole.slice(0, 8).map((word) => word.parola))}.`
+    : "";
   const idiomText =
     analysis.modiDiDire.length > 0
       ? ` Modi di dire o formule ricorrenti: ${formatList(analysis.modiDiDire.slice(0, 6).map((phrase) => phrase.frase.replace(/\s+/g, "")))}.`
@@ -284,7 +295,13 @@ function generateLocalEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAII
       ? ` Riferimenti ricorrenti: ${formatList(analysis.riferimenti.slice(0, 6).map((reference) => reference.parola))}.`
       : "";
 
-  return `I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}. Le emozioni con piu indicatori testuali sono: ${formatSignals(emotions)}. Associazioni personaggio-lessico: ${characterText}.${idiomText}${referenceText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
+  return `I temi piu riconoscibili dai segnali lessicali sono: ${formatSignals(themes)}.${topWordsText} Associazioni personaggio-lessico: ${characterText}.${idiomText}${referenceText} Totale analizzato: ${analysis.totaleToken} parole significative, ${analysis.tokenUnici} parole uniche.`;
+}
+
+function generateLocalEpisodeEmotionAnalysis(input: GenerateEpisodeAIInput) {
+  const { emotions } = getLocalAnalysis(input);
+
+  return `Le emozioni piu riconoscibili dai segnali testuali sono: ${formatSignals(emotions)}. Questa lettura si basa esclusivamente sugli indicatori presenti nella trascrizione e distingue la componente emotiva dalla trama e dall'analisi lessicale.`;
 }
 
 function extractOutputText(response: unknown) {
@@ -376,12 +393,13 @@ export async function generateEpisodeSummary(input: GenerateEpisodeAIInput) {
   const prompt = `Sei un'assistente editoriale per una webapp di ricerca su serialita cinese.
 
 Genera una SINTESI dell'episodio in italiano.
-La sintesi deve concentrarsi esclusivamente sul contenuto della puntata: cosa succede, quali eventi o conflitti emergono, quali snodi narrativi si sviluppano.
+La sintesi deve essere una trama/sinossi dell'episodio, simile a una descrizione editoriale: cosa succede, quale situazione apre la puntata, quale conflitto o evento si sviluppa, e qual e il nucleo narrativo.
 Non citare analisi lessicali, parole ricorrenti, frequenze, token, n-grammi o metodologia di analisi.
+Non scrivere "la trascrizione mostra", "i segnali indicano" o formule analitiche.
 Puoi usare la trascrizione sotto e, se disponibile, il link dell'episodio o informazioni online per contestualizzare meglio nomi, trama e collocazione della puntata.
 Non inventare fatti non supportati. Se il contenuto online non e utile, basati sulla trascrizione.
-Scrivi 1-2 paragrafi chiari, massimo 180 parole.
-Chiudi sempre con una riga finale composta solo da una breve citazione testuale dalla trascrizione, tra virgolette, senza etichette introduttive.
+Scrivi un solo paragrafo chiaro, massimo 120 parole, nello stile di una trama breve.
+Non inserire citazioni finali.
 
 ${episodeContext(input)}
 
@@ -399,22 +417,47 @@ ${transcript}`;
   }
 }
 
-export async function generateEpisodeThematicEmotionalAnalysis(input: GenerateEpisodeAIInput) {
+export async function generateEpisodeThemeAnalysis(input: GenerateEpisodeAIInput) {
   if (!shouldUseOpenAI()) {
-    return generateLocalEpisodeThematicEmotionalAnalysis(input);
+    return generateLocalEpisodeThemeAnalysis(input);
   }
 
   const transcript = compactTranscript(input.transcript);
   const prompt = `Sei un'analista di contenuti televisivi in lingua cinese.
 
-Genera una ANALISI TEMATICA ED EMOTIVA in italiano basandoti ESCLUSIVAMENTE sulla trascrizione fornita.
+Genera una ANALISI TEMATICA PER PAROLE in italiano basandoti ESCLUSIVAMENTE sulla trascrizione fornita.
 Non usare conoscenza esterna, web, titoli, recensioni o informazioni online per aggiungere fatti.
 Evidenzia:
-- temi narrativi principali;
-- emozioni dominanti e secondarie;
-- eventuali dinamiche tra personaggi;
-- tono complessivo dell'episodio.
+- temi ricorrenti riconoscibili dal lessico;
+- parole, formule, modi di dire o riferimenti che tornano;
+- se possibile, quali personaggi sembrano associati a quali parole o espressioni.
+Non parlare di emozioni: quelle verranno generate in una sezione separata.
 Scrivi in 1-2 paragrafi, massimo 220 parole.
+
+${episodeContext({ ...input, episodeLink: null })}
+
+Trascrizione:
+${transcript}`;
+
+  return createResponse(prompt, { includeOnlineContext: false });
+}
+
+export async function generateEpisodeEmotionAnalysis(input: GenerateEpisodeAIInput) {
+  if (!shouldUseOpenAI()) {
+    return generateLocalEpisodeEmotionAnalysis(input);
+  }
+
+  const transcript = compactTranscript(input.transcript);
+  const prompt = `Sei un'analista emotiva di contenuti televisivi in lingua cinese.
+
+Genera una ANALISI DELLE EMOZIONI in italiano basandoti ESCLUSIVAMENTE sulla trascrizione fornita.
+Non usare conoscenza esterna, web, titoli, recensioni o informazioni online per aggiungere fatti.
+Concentrati solo su:
+- emozioni dominanti e secondarie;
+- passaggi emotivi o cambi di tono;
+- eventuali tensioni affettive percepibili dal testo.
+Non fare analisi lessicale generale e non riassumere la trama.
+Scrivi in 1 paragrafo, massimo 170 parole.
 
 ${episodeContext({ ...input, episodeLink: null })}
 

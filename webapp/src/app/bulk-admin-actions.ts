@@ -241,6 +241,8 @@ export async function bulkUpdateEpisodeRows(formData: FormData) {
         link_episodio: parseRowText(formData, "link_episodio", id),
         trascrizione: parseRowText(formData, "trascrizione", id),
         sintesi_automatica: parseRowText(formData, "sintesi_automatica", id),
+        analisi_tematica_parole: parseRowText(formData, "analisi_tematica_parole", id),
+        analisi_emozioni: parseRowText(formData, "analisi_emozioni", id),
         analisi_tematica_emotiva: parseRowText(formData, "analisi_tematica_emotiva", id),
         descrizione: parseRowText(formData, "descrizione", id)
       };

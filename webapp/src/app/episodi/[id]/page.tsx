@@ -22,6 +22,8 @@ type EpisodeRecord = {
   trascrizione: string | null;
   sintesi_automatica: string | null;
   analisi_tematica_emotiva: string | null;
+  analisi_tematica_parole: string | null;
+  analisi_emozioni: string | null;
   serie_tv: {
     id: string;
     titolo_originale: string;
@@ -195,7 +197,7 @@ async function getEpisode(id: string) {
     const { data, error } = await supabase
       .from("episodi")
       .select(
-        "id, serie_id, stagione, numero_episodio, titolo_originale, titolo_pinyin, messa_in_onda, link_episodio, trascrizione, sintesi_automatica, analisi_tematica_emotiva, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
+        "id, serie_id, stagione, numero_episodio, titolo_originale, titolo_pinyin, messa_in_onda, link_episodio, trascrizione, sintesi_automatica, analisi_tematica_emotiva, analisi_tematica_parole, analisi_emozioni, serie_tv(id, titolo_originale, titolo_inglese, visibility)"
       )
       .eq("id", id)
       .eq("visibility", "public")
@@ -339,9 +341,12 @@ export default async function EpisodePage({
   }
 
   const missingSummary = !episodio.sintesi_automatica?.trim();
-  const missingAnalysis = !episodio.analisi_tematica_emotiva?.trim();
+  const thematicAnalysis = episodio.analisi_tematica_parole?.trim() || episodio.analisi_tematica_emotiva?.trim() || "";
+  const emotionAnalysis = episodio.analisi_emozioni?.trim() || "";
+  const missingThemeAnalysis = !episodio.analisi_tematica_parole?.trim();
+  const missingEmotionAnalysis = !emotionAnalysis;
   const canGenerateAI = Boolean(session?.canEdit && episodio.trascrizione);
-  const shouldRegenerateAI = !missingSummary && !missingAnalysis;
+  const shouldRegenerateAI = !missingSummary && !missingThemeAnalysis && !missingEmotionAnalysis;
   const quickLessicoOptions = session?.canEdit
     ? await getQuickLessicoOptions(episodio.serie_id)
     : emptyQuickLessicoOptions;
@@ -379,8 +384,9 @@ export default async function EpisodePage({
                 { name: "titolo_pinyin", label: "Titolo pinyin", value: episodio.titolo_pinyin },
                 { name: "messa_in_onda", label: "Messa in onda", type: "date", value: episodio.messa_in_onda },
                 { name: "link_episodio", label: "Link episodio", value: episodio.link_episodio },
-                { name: "sintesi_automatica", label: "Sintesi", type: "textarea", value: episodio.sintesi_automatica },
-                { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva", type: "textarea", value: episodio.analisi_tematica_emotiva },
+                { name: "sintesi_automatica", label: "Trama / sintesi", type: "textarea", value: episodio.sintesi_automatica },
+                { name: "analisi_tematica_parole", label: "Analisi tematica per parole", type: "textarea", value: episodio.analisi_tematica_parole },
+                { name: "analisi_emozioni", label: "Analisi emozioni", type: "textarea", value: episodio.analisi_emozioni },
                 { name: "trascrizione", label: "Trascrizione", type: "textarea", value: episodio.trascrizione }
               ]}
             />
@@ -440,7 +446,7 @@ export default async function EpisodePage({
             <div>
               <h2 className="text-lg font-semibold text-ink">Genera un'analisi AI basata sulla trascrizione</h2>
               <p className="mt-2 text-sm leading-6 text-stone-700">
-                Crea o aggiorna una sintesi della puntata e una lettura tematica ed emotiva partendo dal testo dell'episodio.
+                Crea o aggiorna tre sezioni separate: trama/sintesi, analisi tematica per parole e analisi delle emozioni.
               </p>
             </div>
             <form action={generateEpisodeAIFields}>
@@ -458,7 +464,7 @@ export default async function EpisodePage({
         </section>
       ) : null}
 
-      {session?.canEdit && !episodio.trascrizione && (missingSummary || missingAnalysis) ? (
+      {session?.canEdit && !episodio.trascrizione && (missingSummary || missingThemeAnalysis || missingEmotionAnalysis) ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Serve una trascrizione per generare automaticamente sintesi e analisi.
         </section>
@@ -466,15 +472,22 @@ export default async function EpisodePage({
 
       {episodio.sintesi_automatica ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-ink">Sintesi</h2>
+          <h2 className="text-lg font-semibold text-ink">Trama / Sintesi</h2>
           <SummaryContent value={episodio.sintesi_automatica} />
         </section>
       ) : null}
 
-      {episodio.analisi_tematica_emotiva ? (
+      {thematicAnalysis ? (
         <section className="rounded-md border border-stone-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-ink">Analisi Tematica Ed Emotiva</h2>
-          <p className="mt-3 leading-7 text-stone-700">{episodio.analisi_tematica_emotiva}</p>
+          <h2 className="text-lg font-semibold text-ink">Analisi Tematica Per Parole</h2>
+          <p className="mt-3 leading-7 text-stone-700">{thematicAnalysis}</p>
+        </section>
+      ) : null}
+
+      {emotionAnalysis ? (
+        <section className="rounded-md border border-stone-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-ink">Analisi Emozioni</h2>
+          <p className="mt-3 leading-7 text-stone-700">{emotionAnalysis}</p>
         </section>
       ) : null}
 

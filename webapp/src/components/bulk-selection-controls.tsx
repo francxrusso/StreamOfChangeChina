@@ -167,7 +167,7 @@ export function BulkEpisodeTableEditor({
               <form id={formId} action={bulkUpdateEpisodeRows} className="flex min-h-0 flex-1 flex-col">
                 <input type="hidden" name="return_to" value={returnTo} />
                 <div className="min-h-0 flex-1 overflow-auto p-4">
-                  <table className="min-w-[1900px] border-separate border-spacing-0 text-left text-sm">
+                  <table className="min-w-[2300px] border-separate border-spacing-0 text-left text-sm">
                     <thead className="sticky top-0 z-10 bg-stone-100 text-xs uppercase text-stone-600">
                       <tr>
                         <th className="border-b border-stone-200 px-3 py-2">Stagione</th>
@@ -180,8 +180,10 @@ export function BulkEpisodeTableEditor({
                         <th className="border-b border-stone-200 px-3 py-2">Visibilita</th>
                         <th className="border-b border-stone-200 px-3 py-2">Link episodio</th>
                         <th className="border-b border-stone-200 px-3 py-2">Descrizione</th>
-                        <th className="border-b border-stone-200 px-3 py-2">Sintesi</th>
-                        <th className="border-b border-stone-200 px-3 py-2">Analisi</th>
+                        <th className="border-b border-stone-200 px-3 py-2">Trama / sintesi</th>
+                        <th className="border-b border-stone-200 px-3 py-2">Analisi parole</th>
+                        <th className="border-b border-stone-200 px-3 py-2">Analisi emozioni</th>
+                        <th className="border-b border-stone-200 px-3 py-2">Analisi legacy</th>
                         <th className="border-b border-stone-200 px-3 py-2">Trascrizione</th>
                       </tr>
                     </thead>
@@ -273,6 +275,20 @@ export function BulkEpisodeTableEditor({
                             <textarea
                               name={`sintesi_automatica_${episode.id}`}
                               defaultValue={toInputValue(episode.sintesi_automatica)}
+                              className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
+                            />
+                          </td>
+                          <td className="border-b border-stone-100 px-3 py-2">
+                            <textarea
+                              name={`analisi_tematica_parole_${episode.id}`}
+                              defaultValue={toInputValue(episode.analisi_tematica_parole)}
+                              className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
+                            />
+                          </td>
+                          <td className="border-b border-stone-100 px-3 py-2">
+                            <textarea
+                              name={`analisi_emozioni_${episode.id}`}
+                              defaultValue={toInputValue(episode.analisi_emozioni)}
                               className="min-h-24 w-80 rounded-md border border-stone-300 px-2 py-1.5 outline-none focus:border-cinnabar"
                             />
                           </td>

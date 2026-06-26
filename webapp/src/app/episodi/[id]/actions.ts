@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "@/app/access-actions";
-import { generateEpisodeSummary, generateEpisodeThematicEmotionalAnalysis } from "@/lib/episode-ai";
+import { generateEpisodeEmotionAnalysis, generateEpisodeSummary, generateEpisodeThemeAnalysis } from "@/lib/episode-ai";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -17,6 +17,8 @@ type EpisodeForAI = {
   trascrizione: string | null;
   sintesi_automatica: string | null;
   analisi_tematica_emotiva: string | null;
+  analisi_tematica_parole: string | null;
+  analisi_emozioni: string | null;
   serie_tv: {
     titolo_originale: string;
   } | null;
@@ -74,7 +76,7 @@ export async function generateEpisodeAIFields(formData: FormData) {
     const { data, error } = await supabase
       .from("episodi")
       .select(
-        "id,serie_id,stagione,numero_episodio,titolo_originale,link_episodio,trascrizione,sintesi_automatica,analisi_tematica_emotiva,serie_tv(titolo_originale)"
+        "id,serie_id,stagione,numero_episodio,titolo_originale,link_episodio,trascrizione,sintesi_automatica,analisi_tematica_emotiva,analisi_tematica_parole,analisi_emozioni,serie_tv(titolo_originale)"
       )
       .eq("id", episodeId)
       .maybeSingle();
@@ -94,10 +96,11 @@ export async function generateEpisodeAIFields(formData: FormData) {
     }
 
     const missingSummary = forceRegenerate || !episode.sintesi_automatica?.trim();
-    const missingAnalysis = forceRegenerate || !episode.analisi_tematica_emotiva?.trim();
+    const missingThemeAnalysis = forceRegenerate || !episode.analisi_tematica_parole?.trim();
+    const missingEmotionAnalysis = forceRegenerate || !episode.analisi_emozioni?.trim();
 
-    if (!missingSummary && !missingAnalysis) {
-      redirectMessage = "Sintesi e analisi erano gia presenti. Non ho sovrascritto nulla.";
+    if (!missingSummary && !missingThemeAnalysis && !missingEmotionAnalysis) {
+      redirectMessage = "Trama, analisi tematica e analisi emozioni erano gia presenti. Non ho sovrascritto nulla.";
     } else {
       const { data: characterData, error: characterError } = await supabase
         .from("personaggi")
@@ -126,15 +129,20 @@ export async function generateEpisodeAIFields(formData: FormData) {
 
       const updates: {
         sintesi_automatica?: string;
-        analisi_tematica_emotiva?: string;
+        analisi_tematica_parole?: string;
+        analisi_emozioni?: string;
       } = {};
 
       if (missingSummary) {
         updates.sintesi_automatica = await generateEpisodeSummary(aiInput);
       }
 
-      if (missingAnalysis) {
-        updates.analisi_tematica_emotiva = await generateEpisodeThematicEmotionalAnalysis(aiInput);
+      if (missingThemeAnalysis) {
+        updates.analisi_tematica_parole = await generateEpisodeThemeAnalysis(aiInput);
+      }
+
+      if (missingEmotionAnalysis) {
+        updates.analisi_emozioni = await generateEpisodeEmotionAnalysis(aiInput);
       }
 
       const { error: updateError } = await supabase.from("episodi").update(updates).eq("id", episodeId);
@@ -147,8 +155,9 @@ export async function generateEpisodeAIFields(formData: FormData) {
       revalidatePath(`/serie/${episode.serie_id}`);
 
       const generatedFields = [
-        missingSummary ? "sintesi" : null,
-        missingAnalysis ? "analisi tematica ed emotiva" : null
+        missingSummary ? "trama/sintesi" : null,
+        missingThemeAnalysis ? "analisi tematica per parole" : null,
+        missingEmotionAnalysis ? "analisi emozioni" : null
       ].filter(Boolean);
 
       redirectMessage = forceRegenerate

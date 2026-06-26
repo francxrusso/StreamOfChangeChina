@@ -1,3 +1,4 @@
+import { CHARACTER_GENDER_OPTIONS, getCharacterGenderLabel } from "@/lib/character-genders";
 import { SERIE_GENRE_OPTIONS, getSerieGenreLabel } from "@/lib/serie-genres";
 
 export type AdminFieldType =
@@ -83,7 +84,7 @@ export const adminResources = [
     primaryKey: ["id"],
     orderBy: "created_at",
     summaryFields: ["serie_id", "stagione", "numero_episodio", "titolo_originale", "visibility"],
-    searchFields: ["titolo_originale", "titolo_pinyin", "titolo_italiano", "trascrizione", "sintesi_automatica", "descrizione"],
+    searchFields: ["titolo_originale", "titolo_pinyin", "titolo_italiano", "trascrizione", "sintesi_automatica", "analisi_tematica_parole", "analisi_emozioni", "descrizione"],
     fields: [
       { name: "serie_id", label: "Serie", type: "uuid", relation: "serie", required: true },
       { name: "stagione", label: "Stagione", type: "number", required: true },
@@ -95,8 +96,10 @@ export const adminResources = [
       { name: "durata_secondi", label: "Durata secondi", type: "number" },
       { name: "link_episodio", label: "Link episodio", type: "text" },
       { name: "trascrizione", label: "Trascrizione", type: "textarea" },
-      { name: "sintesi_automatica", label: "Sintesi automatica", type: "textarea" },
-      { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva", type: "textarea" },
+      { name: "sintesi_automatica", label: "Trama / sintesi", type: "textarea" },
+      { name: "analisi_tematica_parole", label: "Analisi tematica per parole", type: "textarea" },
+      { name: "analisi_emozioni", label: "Analisi emozioni", type: "textarea" },
+      { name: "analisi_tematica_emotiva", label: "Analisi tematica/emotiva legacy", type: "textarea" },
       { name: "descrizione", label: "Descrizione", type: "textarea" },
       { name: "note_admin", label: "Note admin", type: "textarea" },
       { name: "visibility", label: "Visibilita", type: "select", options: ["public", "private"], required: true }
@@ -115,7 +118,15 @@ export const adminResources = [
       { name: "nome_originale", label: "Nome originale", type: "text", required: true },
       { name: "nome_pinyin", label: "Nome pinyin", type: "text" },
       { name: "nome_italiano", label: "Nome italiano", type: "text" },
-      { name: "genere", label: "Genere", type: "text" },
+      {
+        name: "genere",
+        label: "Genere",
+        type: "select",
+        options: CHARACTER_GENDER_OPTIONS.map((gender) => ({
+          value: gender.value,
+          label: getCharacterGenderLabel(gender.value)
+        }))
+      },
       { name: "fascia_eta", label: "Fascia d'eta", type: "text" },
       { name: "lavoro", label: "Lavoro", type: "text" },
       { name: "immagine_rappresentativa", label: "Immagine", type: "text" },

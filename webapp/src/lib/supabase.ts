@@ -68,6 +68,8 @@ export type PublicEpisodio = {
   trascrizione: string | null;
   sintesi_automatica: string | null;
   analisi_tematica_emotiva: string | null;
+  analisi_tematica_parole: string | null;
+  analisi_emozioni: string | null;
   descrizione: string | null;
 };
 

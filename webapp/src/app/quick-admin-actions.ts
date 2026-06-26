@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEditSession } from "@/app/access-actions";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { normalizeCharacterGender } from "@/lib/character-genders";
 import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { formatSerieGenres } from "@/lib/serie-genres";
 
@@ -53,6 +54,8 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
       "link_episodio",
       "trascrizione",
       "sintesi_automatica",
+      "analisi_tematica_parole",
+      "analisi_emozioni",
       "analisi_tematica_emotiva",
       "visibility"
     ],
@@ -179,6 +182,7 @@ function normalizePayload(resource: QuickResource, payload: Record<string, Quick
       typeof payload.nome_pinyin === "string" ? payload.nome_pinyin : null,
       typeof payload.nome_originale === "string" ? payload.nome_originale : null
     );
+    payload.genere = normalizeCharacterGender(typeof payload.genere === "string" ? payload.genere : null);
   }
 
   if (resource === "frasi") {

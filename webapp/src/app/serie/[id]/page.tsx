@@ -5,6 +5,7 @@ import { bulkUpdateCharacters } from "@/app/bulk-admin-actions";
 import { BulkEpisodeTableEditor } from "@/components/bulk-selection-controls";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
+import { CHARACTER_GENDER_OPTIONS, getCharacterGenderLabel } from "@/lib/character-genders";
 import {
   type PublicEpisodio,
   type PublicPersonaggio,
@@ -89,7 +90,14 @@ function BulkCharactersForm({ formId, returnTo }: { formId: string; returnTo: st
       </label>
       <label className="grid gap-1 text-sm">
         <span className="font-medium text-ink">Genere</span>
-        <input name="genere" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
+        <select name="genere" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          <option value="">Non modificare</option>
+          {CHARACTER_GENDER_OPTIONS.map((gender) => (
+            <option key={gender.value} value={gender.value}>
+              {getCharacterGenderLabel(gender.value)}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="grid gap-1 text-sm">
         <span className="font-medium text-ink">Fascia eta</span>
@@ -380,7 +388,7 @@ export default async function SerieDetailPage({
                       <p className="mt-1 text-xs text-stone-500">{personaggio.nome_pinyin}</p>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-2 text-xs text-stone-600">
-                      {personaggio.genere ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.genere}</span> : null}
+                      {personaggio.genere ? <span className="rounded-sm bg-stone-100 px-2 py-1">{getCharacterGenderLabel(personaggio.genere)}</span> : null}
                       {personaggio.fascia_eta ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.fascia_eta}</span> : null}
                       {personaggio.lavoro ? <span className="rounded-sm bg-stone-100 px-2 py-1">{personaggio.lavoro}</span> : null}
                     </div>
@@ -401,7 +409,16 @@ export default async function SerieDetailPage({
                           { name: "nome_originale", label: "Nome originale", value: personaggio.nome_originale },
                           { name: "nome_pinyin", label: "Nome pinyin", value: personaggio.nome_pinyin },
                           { name: "nome_italiano", label: "Nome italiano", value: personaggio.nome_italiano },
-                          { name: "genere", label: "Genere", value: personaggio.genere },
+                          {
+                            name: "genere",
+                            label: "Genere",
+                            type: "select",
+                            value: personaggio.genere,
+                            options: CHARACTER_GENDER_OPTIONS.map((gender) => ({
+                              value: gender.value,
+                              label: getCharacterGenderLabel(gender.value)
+                            }))
+                          },
                           { name: "fascia_eta", label: "Fascia eta", value: personaggio.fascia_eta },
                           { name: "lavoro", label: "Lavoro", value: personaggio.lavoro },
                           { name: "immagine_rappresentativa", label: "Immagine", value: personaggio.immagine_rappresentativa },
