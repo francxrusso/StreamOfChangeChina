@@ -56,6 +56,16 @@ export const adminResources = [
           label: getSerieGenreLabel(genre.value)
         }))
       },
+      {
+        name: "gestione_personaggi",
+        label: "Inserire personaggi",
+        type: "select",
+        required: true,
+        options: [
+          { value: "true", label: "Si, gestisci personaggi" },
+          { value: "false", label: "No, non usare personaggi" }
+        ]
+      },
       { name: "piattaforma", label: "Piattaforma", type: "text" },
       { name: "tipo_distribuzione", label: "Distribuzione", type: "select", options: ["tv", "streaming", "ibrida"] },
       { name: "poster_url", label: "Poster URL", type: "text" },

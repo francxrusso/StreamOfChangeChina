@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminRecord, deleteAdminRecord, updateAdminRecord } from "./actions";
 import { adminResources, getAdminResource, type AdminField, type AdminResource } from "./admin-config";
 import { Pagination } from "@/components/pagination";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { splitSerieGenres } from "@/lib/serie-genres";
@@ -18,7 +19,7 @@ type SearchParams = Promise<{
   page?: string;
 }>;
 
-type Row = Record<string, string | number | null>;
+type Row = Record<string, string | number | boolean | null>;
 
 type RelationOption = {
   id: string;
@@ -98,6 +99,10 @@ function fieldDefaultValue(field: AdminField, value: Row[string] | undefined) {
   if (value === null || value === undefined) {
     if (field.name === "visibility") {
       return "private";
+    }
+
+    if (field.name === "gestione_personaggi") {
+      return "true";
     }
 
     if (field.name === "stagione") {
@@ -227,12 +232,12 @@ function AdminForm({
         ))}
       </div>
       <div>
-        <button
-          type="submit"
-          className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+        <PendingSubmitButton
+          pendingText={mode === "create" ? "Creazione..." : "Salvataggio..."}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
         >
           {mode === "create" ? "Aggiungi" : "Salva modifiche"}
-        </button>
+        </PendingSubmitButton>
       </div>
     </form>
   );
@@ -249,9 +254,12 @@ function DeleteForm({ resource, row }: { resource: AdminResource; row: Row }) {
         <input type="checkbox" required className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
         Confermo eliminazione
       </label>
-      <button type="submit" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">
+      <PendingSubmitButton
+        pendingText="Eliminazione..."
+        className="inline-flex items-center justify-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+      >
         Elimina
-      </button>
+      </PendingSubmitButton>
     </form>
   );
 }
@@ -319,9 +327,12 @@ function AdminFiltersForm({
         </label>
       ) : null}
       <div className="flex items-end gap-2">
-        <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+        <PendingSubmitButton
+          pendingText="Filtro..."
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
+        >
           Filtra
-        </button>
+        </PendingSubmitButton>
         <Link href={`/admin?tab=${resource.key}`} className="rounded-md border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:border-cinnabar hover:text-cinnabar">
           Reset
         </Link>

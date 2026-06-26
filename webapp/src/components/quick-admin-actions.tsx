@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
 import { deleteQuickAdminRecord, updateQuickAdminRecord } from "@/app/quick-admin-actions";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { splitSerieGenres } from "@/lib/serie-genres";
 
 export type QuickAdminField = {
@@ -58,13 +59,13 @@ export function QuickAdminActions({ resource, id, title, returnTo, deleteReturnT
         <input type="hidden" name="resource" value={resource} />
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center gap-2 rounded-md border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        <PendingSubmitButton
+          pendingText="Eliminazione..."
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
         >
           <Trash2 size={15} aria-hidden="true" />
           Elimina
-        </button>
+        </PendingSubmitButton>
       </form>
 
       {isOpen ? (
@@ -165,12 +166,11 @@ export function QuickAdminActions({ resource, id, title, returnTo, deleteReturnT
                 >
                   Annulla
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                <PendingSubmitButton
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
                 >
                   Salva modifiche
-                </button>
+                </PendingSubmitButton>
               </div>
             </form>
           </div>

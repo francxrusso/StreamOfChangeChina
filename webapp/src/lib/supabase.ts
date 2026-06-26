@@ -44,6 +44,7 @@ export type PublicSerie = {
   anno: number | null;
   stagioni: number | null;
   genere: string | null;
+  gestione_personaggi: boolean | null;
   piattaforma: string | null;
   tipo_distribuzione: string | null;
   poster_url: string | null;

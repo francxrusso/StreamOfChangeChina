@@ -33,6 +33,7 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
       "anno",
       "stagioni",
       "genere",
+      "gestione_personaggi",
       "piattaforma",
       "poster_url",
       "descrizione",

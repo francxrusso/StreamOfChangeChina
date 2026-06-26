@@ -7,7 +7,7 @@ import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { formatSerieGenres } from "@/lib/serie-genres";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
-type BulkValue = string | number | null;
+type BulkValue = string | number | boolean | null;
 
 function safeReturnTo(value: FormDataEntryValue | null) {
   const returnTo = typeof value === "string" ? value : "/";
@@ -106,6 +106,13 @@ export async function bulkUpdateSeries(formData: FormData) {
 
     const payload: Record<string, BulkValue> = {};
     addPayloadValue(payload, "visibility", parseText(formData, "visibility"));
+    const gestionePersonaggi = parseText(formData, "gestione_personaggi");
+    if (gestionePersonaggi === "true") {
+      payload.gestione_personaggi = true;
+    }
+    if (gestionePersonaggi === "false") {
+      payload.gestione_personaggi = false;
+    }
     addPayloadValue(payload, "piattaforma", parseText(formData, "piattaforma"));
     addPayloadValue(payload, "tipo_distribuzione", parseText(formData, "tipo_distribuzione"));
 

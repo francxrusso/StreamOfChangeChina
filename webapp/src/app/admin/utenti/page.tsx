@@ -2,6 +2,7 @@ import Link from "next/link";
 import { UserPlus, UsersRound } from "lucide-react";
 import { requireEditSession } from "@/app/access-actions";
 import { Pagination } from "@/components/pagination";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { createUser, updateUser } from "./actions";
@@ -146,9 +147,12 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
             Puo' modificare dati e utenti
           </label>
           <div className="md:col-span-2">
-            <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+            <PendingSubmitButton
+              pendingText="Creazione..."
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
+            >
               Crea utente
-            </button>
+            </PendingSubmitButton>
           </div>
         </form>
       </section>
@@ -207,9 +211,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
                 </label>
               </div>
               <div className="md:col-span-2">
-                <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+                <PendingSubmitButton
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar disabled:cursor-wait disabled:bg-ink/70"
+                >
                   Salva utente
-                </button>
+                </PendingSubmitButton>
               </div>
             </form>
           </details>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { Pagination } from "@/components/pagination";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
 import { type PublicFraseParola, type PublicSerie } from "@/lib/supabase";
@@ -288,9 +289,12 @@ export default async function FrasiPage({
           </select>
         </label>
         <div className="flex items-end gap-3 md:col-span-4">
-          <button className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-cinnabar">
+          <PendingSubmitButton
+            pendingText="Ricerca..."
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-cinnabar disabled:cursor-wait disabled:bg-ink/70"
+          >
             Cerca
-          </button>
+          </PendingSubmitButton>
           <a href="/frasi" className="px-2 py-2 text-sm font-medium text-cinnabar hover:text-ink">
             Azzera
           </a>

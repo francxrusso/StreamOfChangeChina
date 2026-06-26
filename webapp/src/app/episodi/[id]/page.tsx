@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Quote, Sparkles } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { createServerSupabaseClient, hasServerSupabaseConfig } from "@/lib/supabase-server";
 import { TranscriptViewer } from "@/components/transcript-viewer";
@@ -445,13 +446,13 @@ export default async function EpisodePage({
             <form action={generateEpisodeAIFields}>
               <input type="hidden" name="episodio_id" value={episodio.id} />
               {shouldRegenerateAI ? <input type="hidden" name="force_regenerate" value="true" /> : null}
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar"
+              <PendingSubmitButton
+                pendingText="Generazione..."
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar disabled:cursor-wait disabled:bg-ink/70"
               >
                 <Sparkles size={16} aria-hidden="true" />
                 {shouldRegenerateAI ? "Rigenera analisi AI" : "Genera analisi AI"}
-              </button>
+              </PendingSubmitButton>
             </form>
           </div>
         </section>

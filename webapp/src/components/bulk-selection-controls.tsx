@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Save, Table2, X } from "lucide-react";
 import { bulkUpdateEpisodeRows } from "@/app/bulk-admin-actions";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { type PublicEpisodio } from "@/lib/supabase";
 
 function getBulkCheckboxes(formId: string) {
@@ -296,13 +297,12 @@ export function BulkEpisodeTableEditor({
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 px-5 py-4">
                   <span className="text-sm text-stone-600">{selectedEpisodes.length} righe pronte per il salvataggio.</span>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  <PendingSubmitButton
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
                   >
                     <Save size={16} aria-hidden="true" />
                     Salva modifiche bulk
-                  </button>
+                  </PendingSubmitButton>
                 </div>
               </form>
             )}

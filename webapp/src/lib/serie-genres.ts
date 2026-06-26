@@ -3,6 +3,7 @@ export const SERIE_GENRE_OPTIONS = [
   { value: "Romance", zh: "爱情" },
   { value: "Comedy", zh: "喜剧" },
   { value: "Animation", zh: "动画" },
+  { value: "Documentary", zh: "纪录片" },
   { value: "Crime", zh: "犯罪" },
   { value: "Thriller", zh: "惊悚" },
   { value: "Mystery", zh: "悬疑" },

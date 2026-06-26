@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BarChart3, Plus, X } from "lucide-react";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { createAnalysisRun } from "./actions";
 
 export type AnalysisSerieOption = {
@@ -180,12 +181,12 @@ export function CreateAnalysisModal({ series, episodes }: CreateAnalysisModalPro
                 >
                   Annulla
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                <PendingSubmitButton
+                  pendingText="Creazione..."
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
                 >
                   Crea analisi
-                </button>
+                </PendingSubmitButton>
               </div>
             </form>
           </div>

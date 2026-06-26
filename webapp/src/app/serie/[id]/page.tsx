@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { getAdminSession } from "@/app/access-actions";
 import { bulkUpdateCharacters } from "@/app/bulk-admin-actions";
 import { BulkEpisodeTableEditor } from "@/components/bulk-selection-controls";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import {
   type PublicEpisodio,
@@ -98,9 +99,12 @@ function BulkCharactersForm({ formId, returnTo }: { formId: string; returnTo: st
         <span className="font-medium text-ink">Lavoro</span>
         <input name="lavoro" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar" placeholder="Non modificare" />
       </label>
-      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+      <PendingSubmitButton
+        pendingText="Applicazione..."
+        className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar disabled:cursor-wait disabled:bg-ink/70"
+      >
         Applica bulk
-      </button>
+      </PendingSubmitButton>
     </form>
   );
 }
@@ -221,6 +225,8 @@ export default async function SerieDetailPage({
   const { serie, episodi, personaggi, error } = await getSerieDetail(id);
   const episodeGroups = groupEpisodesBySeason(episodi);
   const hasMultipleSeasons = episodeGroups.length > 1;
+  const usesCharacters = serie?.gestione_personaggi !== false;
+  const isDocumentary = splitSerieGenres(serie?.genere).includes("Documentary");
   const returnTo = `/serie/${id}`;
   const bulkCharactersFormId = `bulk-personaggi-${id}`;
   const bulkEpisodesFormId = `bulk-episodi-${id}`;
@@ -289,6 +295,16 @@ export default async function SerieDetailPage({
                       label: getSerieGenreLabel(genre.value)
                     }))
                   },
+                  {
+                    name: "gestione_personaggi",
+                    label: "Inserire personaggi",
+                    type: "select",
+                    value: serie.gestione_personaggi ?? true,
+                    options: [
+                      { value: "true", label: "Si, gestisci personaggi" },
+                      { value: "false", label: "No, non usare personaggi" }
+                    ]
+                  },
                   { name: "piattaforma", label: "Piattaforma", value: serie.piattaforma },
                   { name: "poster_url", label: "Poster URL", value: serie.poster_url },
                   { name: "descrizione", label: "Descrizione", type: "textarea", value: serie.descrizione }
@@ -327,10 +343,17 @@ export default async function SerieDetailPage({
                 <dd className="mt-1">{serie.tipo_distribuzione}</dd>
               </div>
             ) : null}
+            {isDocumentary ? (
+              <div>
+                <dt className="font-medium text-ink">Personaggi</dt>
+                <dd className="mt-1">{usesCharacters ? "Da gestire" : "Non previsti"}</dd>
+              </div>
+            ) : null}
           </dl>
         </div>
       </div>
 
+      {usesCharacters ? (
       <details className="group rounded-md border border-stone-200 bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">
           <span>Personaggi</span>
@@ -400,6 +423,11 @@ export default async function SerieDetailPage({
           </div>
         )}
       </details>
+      ) : (
+        <section className="rounded-md border border-stone-200 bg-white p-5 text-sm text-stone-700">
+          I personaggi non sono previsti per questa serie. Puoi riattivarli dal pulsante “Modifica” della serie.
+        </section>
+      )}
 
       <details className="group rounded-md border border-stone-200 bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xl font-semibold text-ink marker:hidden">

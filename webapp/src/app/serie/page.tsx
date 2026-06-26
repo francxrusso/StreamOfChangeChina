@@ -4,6 +4,7 @@ import { getAdminSession } from "@/app/access-actions";
 import { bulkUpdateSeries } from "@/app/bulk-admin-actions";
 import { SelectAllCheckbox } from "@/components/bulk-selection-controls";
 import { Pagination } from "@/components/pagination";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { QuickAdminActions } from "@/components/quick-admin-actions";
 import { paginateItems, parsePage } from "@/lib/pagination";
 import { type PublicSerie } from "@/lib/supabase";
@@ -127,9 +128,12 @@ function SerieFiltersForm({ filters }: { filters: SerieFilters }) {
         </select>
       </label>
       <div className="flex gap-2">
-        <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+        <PendingSubmitButton
+          pendingText="Filtro..."
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
+        >
           Filtra
-        </button>
+        </PendingSubmitButton>
         <Link href="/serie" className="rounded-md border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:border-cinnabar hover:text-cinnabar">
           Reset
         </Link>
@@ -158,6 +162,14 @@ function BulkSeriesForm({ formId, returnTo }: { formId: string; returnTo: string
         </select>
       </label>
       <label className="grid gap-1 text-sm">
+        <span className="font-medium text-ink">Personaggi</span>
+        <select name="gestione_personaggi" defaultValue="" className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
+          <option value="">Non modificare</option>
+          <option value="true">Si, gestisci personaggi</option>
+          <option value="false">No, non usare personaggi</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">
         <span className="font-medium text-ink">Generi</span>
         <select name="genere" multiple className="min-h-24 rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar">
           {SERIE_GENRE_OPTIONS.map((genre) => (
@@ -182,9 +194,12 @@ function BulkSeriesForm({ formId, returnTo }: { formId: string; returnTo: string
           </select>
         </label>
       </div>
-      <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar">
+      <PendingSubmitButton
+        pendingText="Applicazione..."
+        className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-cinnabar disabled:cursor-wait disabled:bg-ink/70"
+      >
         Applica bulk
-      </button>
+      </PendingSubmitButton>
     </form>
   );
 }
@@ -411,6 +426,16 @@ export default async function SeriePage({
                             value: genre.value,
                             label: getSerieGenreLabel(genre.value)
                           }))
+                        },
+                        {
+                          name: "gestione_personaggi",
+                          label: "Inserire personaggi",
+                          type: "select",
+                          value: item.gestione_personaggi ?? true,
+                          options: [
+                            { value: "true", label: "Si, gestisci personaggi" },
+                            { value: "false", label: "No, non usare personaggi" }
+                          ]
                         },
                         { name: "piattaforma", label: "Piattaforma", value: item.piattaforma },
                         { name: "poster_url", label: "Poster URL", value: item.poster_url },

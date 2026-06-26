@@ -8,13 +8,21 @@ import { maybeGeneratePinyin } from "@/lib/pinyin";
 import { formatSerieGenres } from "@/lib/serie-genres";
 import { getAdminResource, type AdminField } from "./admin-config";
 
-type AdminValue = string | number | null;
+type AdminValue = string | number | boolean | null;
 
 function parseValue(field: AdminField, value: FormDataEntryValue | null): AdminValue {
   const rawValue = typeof value === "string" ? value.trim() : "";
 
   if (rawValue === "") {
     return null;
+  }
+
+  if (rawValue === "true") {
+    return true;
+  }
+
+  if (rawValue === "false") {
+    return false;
   }
 
   if (field.type === "number") {

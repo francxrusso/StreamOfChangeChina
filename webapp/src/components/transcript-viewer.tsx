@@ -84,13 +84,10 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
   const [expanded, setExpanded] = useState(true);
   const [speakerFilter, setSpeakerFilter] = useState("all");
 
-  const paragraphs = useMemo(
-    () =>
-      text
-        .split(/\n{2,}/)
-        .map((part) => part.trim())
-        .filter(Boolean),
-    [text]
+  const plainTranscript = useMemo(() => text.replace(/\r\n/g, "\n").trim(), [text]);
+  const plainLineCount = useMemo(
+    () => plainTranscript.split("\n").filter((line) => line.trim()).length,
+    [plainTranscript]
   );
   const speakerSegments = useMemo(() => (segments?.length ? segments : parseSpeakerSegments(text)), [segments, text]);
   const hasSpeakerSegments = speakerSegments.length > 0;
@@ -100,7 +97,7 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
   );
   const searchableBlocks = hasSpeakerSegments
     ? speakerSegments.map((segment) => `${segment.speaker}: ${segment.text}`)
-    : paragraphs;
+    : [plainTranscript];
 
   const matches = useMemo(() => {
     const cleanQuery = query.trim();
@@ -110,9 +107,8 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
     return searchableBlocks.reduce((count, block) => count + (block.match(regex)?.length ?? 0), 0);
   }, [searchableBlocks, query]);
 
-  const visibleParagraphs = query.trim()
-    ? paragraphs.filter((paragraph) => paragraph.toLowerCase().includes(query.trim().toLowerCase()))
-    : paragraphs;
+  const plainTranscriptMatches =
+    !query.trim() || plainTranscript.toLowerCase().includes(query.trim().toLowerCase());
   const visibleSegments = speakerSegments.filter((segment) => {
     const matchesSpeaker = speakerFilter === "all" || segment.speaker === speakerFilter;
     const matchesQuery =
@@ -141,7 +137,7 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
               ? `${matches} occorrenze`
               : hasSpeakerSegments
                 ? `${speakerSegments.length} battute`
-                : `${paragraphs.length} blocchi`}
+                : `${plainLineCount} righe`}
           </span>
           <button
             type="button"
@@ -208,13 +204,9 @@ export function TranscriptViewer({ text, segments }: TranscriptViewerProps) {
             ) : (
               <p className="text-sm text-stone-600">Nessun risultato nella trascrizione.</p>
             )
-          ) : visibleParagraphs.length > 0 ? (
-            <div className="grid gap-4">
-              {visibleParagraphs.map((paragraph, index) => (
-                <p key={`${index}-${paragraph.slice(0, 12)}`} className="leading-8 text-stone-800">
-                  <HighlightedText text={paragraph} query={query} />
-                </p>
-              ))}
+          ) : plainTranscript && plainTranscriptMatches ? (
+            <div className="whitespace-pre-wrap leading-8 text-stone-800">
+              <HighlightedText text={plainTranscript} query={query} />
             </div>
           ) : (
             <p className="text-sm text-stone-600">Nessun risultato nella trascrizione.</p>

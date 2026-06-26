@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { loginAdmin } from "../access-actions";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 export default function AccessoPage() {
   const isConfigured = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY && (process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD));
@@ -41,9 +42,12 @@ export default function AccessoPage() {
                 className="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-cinnabar focus:ring-2 focus:ring-cinnabar/15"
               />
             </label>
-            <button type="submit" className="rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+            <PendingSubmitButton
+              pendingText="Accesso..."
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70"
+            >
               Entra
-            </button>
+            </PendingSubmitButton>
           </form>
         ) : (
           <p className="mt-4 text-sm text-stone-700">

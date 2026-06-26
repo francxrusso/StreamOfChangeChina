@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getAdminSession, logoutAdmin } from "./access-actions";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -66,9 +67,12 @@ async function AppShell({ children }: { children: React.ReactNode }) {
                   {session?.displayName}
                 </span>
                 <form action={logoutAdmin}>
-                  <button type="submit" className="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-cinnabar hover:text-cinnabar">
+                  <PendingSubmitButton
+                    pendingText="Uscita..."
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-cinnabar hover:text-cinnabar disabled:cursor-wait disabled:opacity-70"
+                  >
                     Esci
-                  </button>
+                  </PendingSubmitButton>
                 </form>
               </div>
             </nav>
