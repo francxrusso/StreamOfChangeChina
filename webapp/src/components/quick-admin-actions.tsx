@@ -25,6 +25,7 @@ type QuickAdminActionsProps = {
   align?: "start" | "end";
   variant?: "buttons" | "menu";
   extraActions?: ReactNode;
+  allowDelete?: boolean;
 };
 
 function fieldValue(value: QuickAdminField["value"]) {
@@ -44,7 +45,8 @@ export function QuickAdminActions({
   fields,
   align = "end",
   variant = "buttons",
-  extraActions
+  extraActions,
+  allowDelete = true
 }: QuickAdminActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -78,27 +80,29 @@ export function QuickAdminActions({
 
             {extraActions}
 
-            <form
-              action={deleteQuickAdminRecord}
-              onSubmit={(event) => {
-                const confirmed = window.confirm(`Vuoi eliminare questo elemento?\n\n${title}`);
+            {allowDelete ? (
+              <form
+                action={deleteQuickAdminRecord}
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(`Vuoi eliminare questo elemento?\n\n${title}`);
 
-                if (!confirmed) {
-                  event.preventDefault();
-                }
-              }}
-            >
-              <input type="hidden" name="resource" value={resource} />
-              <input type="hidden" name="id" value={id} />
-              <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
-              <PendingSubmitButton
-                pendingText="Eliminazione..."
-                className="inline-flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
-                <Trash2 size={15} aria-hidden="true" />
-                Elimina
-              </PendingSubmitButton>
-            </form>
+                <input type="hidden" name="resource" value={resource} />
+                <input type="hidden" name="id" value={id} />
+                <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
+                <PendingSubmitButton
+                  pendingText="Eliminazione..."
+                  className="inline-flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  Elimina
+                </PendingSubmitButton>
+              </form>
+            ) : null}
           </div>
         ) : null}
 
@@ -127,27 +131,29 @@ export function QuickAdminActions({
         Modifica
       </button>
 
-      <form
-        action={deleteQuickAdminRecord}
-        onSubmit={(event) => {
-          const confirmed = window.confirm(`Vuoi eliminare questo elemento?\n\n${title}`);
+      {allowDelete ? (
+        <form
+          action={deleteQuickAdminRecord}
+          onSubmit={(event) => {
+            const confirmed = window.confirm(`Vuoi eliminare questo elemento?\n\n${title}`);
 
-          if (!confirmed) {
-            event.preventDefault();
-          }
-        }}
-      >
-        <input type="hidden" name="resource" value={resource} />
-        <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
-        <PendingSubmitButton
-          pendingText="Eliminazione..."
-          className="inline-flex items-center justify-center gap-2 rounded-md border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+            if (!confirmed) {
+              event.preventDefault();
+            }
+          }}
         >
-          <Trash2 size={15} aria-hidden="true" />
-          Elimina
-        </PendingSubmitButton>
-      </form>
+          <input type="hidden" name="resource" value={resource} />
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="return_to" value={deleteReturnTo ?? returnTo} />
+          <PendingSubmitButton
+            pendingText="Eliminazione..."
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 size={15} aria-hidden="true" />
+            Elimina
+          </PendingSubmitButton>
+        </form>
+      ) : null}
 
       {isOpen ? (
         <QuickEditDialog

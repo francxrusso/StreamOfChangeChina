@@ -123,6 +123,10 @@ type NoticeData = {
   message: string;
 };
 
+type SerieAdminData = {
+  note_admin: string | null;
+};
+
 function getValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
@@ -156,7 +160,7 @@ function Notice({ notice }: { notice: NoticeData }) {
   );
 }
 
-async function getSerieDetail(id: string) {
+async function getSerieDetail(id: string, canViewAdminData: boolean) {
   const supabase = createServerSupabaseClient();
 
   if (!hasServerSupabaseConfig() || !supabase) {
@@ -164,6 +168,7 @@ async function getSerieDetail(id: string) {
       serie: null,
       episodi: [],
       personaggi: [],
+      adminData: null,
       error: "Configurazione Supabase server mancante. Controlla SUPABASE_SERVICE_ROLE_KEY e riavvia npm run dev."
     };
   }
@@ -176,12 +181,13 @@ async function getSerieDetail(id: string) {
       .maybeSingle();
 
     if (serieError) {
-      return { serie: null, episodi: [], personaggi: [], error: serieError.message };
+      return { serie: null, episodi: [], personaggi: [], adminData: null, error: serieError.message };
     }
 
     const [
       { data: episodi, error: episodiError },
-      { data: personaggi, error: personaggiError }
+      { data: personaggi, error: personaggiError },
+      { data: adminData, error: adminDataError }
     ] = await Promise.all([
       supabase
         .from("public_episodi")
@@ -193,21 +199,29 @@ async function getSerieDetail(id: string) {
         .from("public_personaggi")
         .select("*")
         .eq("serie_id", id)
-        .order("nome_originale", { ascending: true })
+        .order("nome_originale", { ascending: true }),
+      canViewAdminData
+        ? supabase.from("serie_tv").select("note_admin").eq("id", id).maybeSingle()
+        : Promise.resolve({ data: null, error: null })
     ]);
 
     if (episodiError) {
-      return { serie: null, episodi: [], personaggi: [], error: episodiError.message };
+      return { serie: null, episodi: [], personaggi: [], adminData: null, error: episodiError.message };
     }
 
     if (personaggiError) {
-      return { serie: null, episodi: [], personaggi: [], error: personaggiError.message };
+      return { serie: null, episodi: [], personaggi: [], adminData: null, error: personaggiError.message };
+    }
+
+    if (adminDataError) {
+      return { serie: null, episodi: [], personaggi: [], adminData: null, error: adminDataError.message };
     }
 
     return {
       serie: serie as PublicSerie | null,
       episodi: (episodi ?? []) as PublicEpisodio[],
       personaggi: (personaggi ?? []) as PublicPersonaggio[],
+      adminData: (adminData as SerieAdminData | null) ?? null,
       error: null
     };
   } catch (unknownError) {
@@ -216,7 +230,7 @@ async function getSerieDetail(id: string) {
         ? unknownError.message
         : "Errore sconosciuto durante il caricamento della serie.";
 
-    return { serie: null, episodi: [], personaggi: [], error: message };
+    return { serie: null, episodi: [], personaggi: [], adminData: null, error: message };
   }
 }
 
@@ -231,7 +245,8 @@ export default async function SerieDetailPage({
   const query = await searchParams;
   const notice = getNotice(query);
   const session = await getAdminSession();
-  const { serie, episodi, personaggi, error } = await getSerieDetail(id);
+  const canEdit = Boolean(session?.canEdit);
+  const { serie, episodi, personaggi, adminData, error } = await getSerieDetail(id, canEdit);
   const episodeGroups = groupEpisodesBySeason(episodi);
   const hasMultipleSeasons = episodeGroups.length > 1;
   const usesCharacters = serie?.gestione_personaggi !== false;
@@ -279,7 +294,7 @@ export default async function SerieDetailPage({
           <h1 className="mt-4 text-3xl font-semibold text-ink">{serie.titolo_originale}</h1>
           {serie.titolo_inglese ? <p className="mt-2 text-stone-600">{serie.titolo_inglese}</p> : null}
           {serie.descrizione ? <p className="mt-5 max-w-3xl leading-7 text-stone-700">{serie.descrizione}</p> : null}
-          {session?.canEdit ? (
+          {canEdit ? (
             <div className="mt-5">
               <QuickAdminActions
                 resource="serie"
@@ -316,7 +331,8 @@ export default async function SerieDetailPage({
                   },
                   { name: "piattaforma", label: "Piattaforma", value: serie.piattaforma },
                   { name: "poster_url", label: "Poster URL", value: serie.poster_url },
-                  { name: "descrizione", label: "Descrizione", type: "textarea", value: serie.descrizione }
+                  { name: "descrizione", label: "Descrizione", type: "textarea", value: serie.descrizione },
+                  { name: "note_admin", label: "Note admin", type: "textarea", value: adminData?.note_admin ?? null }
                 ]}
               />
             </div>
@@ -361,6 +377,37 @@ export default async function SerieDetailPage({
           </dl>
         </div>
       </div>
+
+      {canEdit ? (
+        <section className="rounded-md border border-amber-200 bg-amber-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase text-amber-800">Solo admin</p>
+              <h2 className="mt-1 text-xl font-semibold text-ink">Note interne</h2>
+            </div>
+            <QuickAdminActions
+              resource="serie"
+              id={serie.id}
+              title={`Note interne - ${serie.titolo_originale}`}
+              returnTo={`/serie/${serie.id}`}
+              align="end"
+              allowDelete={false}
+              fields={[
+                { name: "note_admin", label: "Note admin", type: "textarea", value: adminData?.note_admin ?? null }
+              ]}
+            />
+          </div>
+          {adminData?.note_admin?.trim() ? (
+            <div className="mt-4 whitespace-pre-wrap rounded-md border border-amber-200 bg-white/80 p-4 text-sm leading-6 text-stone-800">
+              {adminData.note_admin}
+            </div>
+          ) : (
+            <p className="mt-4 rounded-md border border-dashed border-amber-300 bg-white/50 p-4 text-sm text-stone-700">
+              Nessuna nota interna inserita per questa serie.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       {usesCharacters ? (
       <details className="group rounded-md border border-stone-200 bg-white">

@@ -38,6 +38,7 @@ const resourceConfig: Record<QuickResource, ResourceConfig> = {
       "piattaforma",
       "poster_url",
       "descrizione",
+      "note_admin",
       "visibility"
     ],
     revalidate: ["/serie", "/admin"]
