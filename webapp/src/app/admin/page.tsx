@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminRecord, deleteAdminRecord, updateAdminRecord } from "./actions";
 import { adminResources, getAdminResource, type AdminField, type AdminResource } from "./admin-config";
+import { importEpisodeTranscripts } from "./transcript-import-actions";
 import { Pagination } from "@/components/pagination";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { getPagination, parsePage, type PaginationState } from "@/lib/pagination";
@@ -395,6 +396,72 @@ function AdminNoticeBanner({ notice }: { notice: AdminNotice | null }) {
   );
 }
 
+function TranscriptImportForm({ relationOptions, selectedSerieId }: { relationOptions: RelationOptions; selectedSerieId: string }) {
+  return (
+    <section className="rounded-lg border border-stone-200 bg-white p-5">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase text-cinnabar">Import massivo</p>
+        <h2 className="mt-1 text-xl font-semibold text-ink">Carica trascrizioni episodi</h2>
+        <p className="mt-2 max-w-3xl text-sm text-stone-600">
+          Carica uno o piu file .txt. Il sistema legge il numero episodio dal nome file, per esempio ep01.txt, episode 1.txt o episodio 1.txt, e aggiorna la trascrizione dell'episodio corrispondente.
+        </p>
+      </div>
+      <form action={importEpisodeTranscripts} encType="multipart/form-data" className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_120px_minmax(0,1.5fr)]">
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Serie</span>
+          <select
+            name="serie_id"
+            defaultValue={selectedSerieId}
+            required
+            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+          >
+            <option value="">Seleziona serie</option>
+            {relationOptions.serie.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">Stagione</span>
+          <input
+            name="stagione"
+            type="number"
+            min={1}
+            defaultValue={1}
+            required
+            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-cinnabar"
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-ink">File transcript</span>
+          <input
+            name="transcripts"
+            type="file"
+            accept=".txt,text/plain"
+            multiple
+            required
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 file:mr-3 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-stone-800 hover:file:bg-stone-200"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-stone-700 md:col-span-2">
+          <input name="overwrite_existing" type="checkbox" defaultChecked className="h-4 w-4 rounded border-stone-300 text-cinnabar" />
+          Sovrascrivi trascrizioni gia presenti
+        </label>
+        <div className="flex items-end md:justify-end">
+          <PendingSubmitButton
+            pendingText="Import in corso..."
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cinnabar px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:bg-red-700/70 md:w-auto"
+          >
+            Importa transcript
+          </PendingSubmitButton>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 async function getRelationOptions(): Promise<RelationOptions> {
   const supabase = createSupabaseAdminClient();
   const [serie, episodi, personaggi, emozioni, frasi, danmu, battute] = await Promise.all([
@@ -508,6 +575,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       <AdminNoticeBanner notice={notice} />
 
       <AdminFiltersForm resource={activeResource} filters={filters} relationOptions={relationOptions} />
+
+      {activeResource.key === "episodi" ? (
+        <TranscriptImportForm relationOptions={relationOptions} selectedSerieId={filters.serie} />
+      ) : null}
 
       <section className="rounded-lg border border-stone-200 bg-white p-5">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
