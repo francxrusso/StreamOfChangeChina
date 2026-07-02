@@ -89,6 +89,8 @@ export async function importEpisodeTranscripts(formData: FormData) {
   const serieId = String(formData.get("serie_id") ?? "").trim();
   const stagione = Number.parseInt(String(formData.get("stagione") ?? "1"), 10);
   const overwriteExisting = formData.get("overwrite_existing") === "on";
+  let status: "success" | "error" = "success";
+  let message = "";
 
   try {
     await requireEditSession();
@@ -203,12 +205,11 @@ export async function importEpisodeTranscripts(formData: FormData) {
     }
 
     revalidatePath("/admin");
-    adminRedirect(
-      "success",
-      `Trascrizioni importate: ${imported}. File saltati perche gia presenti: ${skipped}.`,
-      serieId
-    );
+    message = `Trascrizioni importate: ${imported}. File saltati perche gia presenti: ${skipped}.`;
   } catch (error) {
-    adminRedirect("error", buildErrorMessage(error), serieId);
+    status = "error";
+    message = buildErrorMessage(error);
   }
+
+  adminRedirect(status, message, serieId);
 }
